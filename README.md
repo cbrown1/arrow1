@@ -21,6 +21,7 @@ make && sudo make install
 Set port aliases in jack for convenience. Afterwards, ports can be called via out1, out2, in1, in2, etc.
 
 ```bash
+# From jack's perspective, output ports are capture or record ports, and vice-versa
 ins=\$(jack_lsp -p | awk '/output/{print previous_line}{previous_line=$0}')
 i=1
 for j in \${ins}; do jack_alias \${j} in\${i}; ((i++)); done
