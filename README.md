@@ -4,24 +4,31 @@ Play and record multi-channel audio using jack.
 
 This is the same code as [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md) with a few minor bugfixes, and improved logging and option handling. But the essential code is identical.
 
-### Prerequisites
+## Prerequisites
 
 - [jack](http://jackaudio.org/)
 
 - [libsndfile](http://www.mega-nerd.com/libsndfile/)
 
-### Installing
+## Installing
 
-Compile:
+### Download:
+
+```bash
+git clone https://github.com/cbrown1/olinout.git
+```
+
+### Compile and install:
 
 ```bash
 make && sudo make install
 ```
 
-Set port aliases in jack for convenience. Afterwards, ports can be called via out1, out2, in1, in2, etc.
+## Usage
+
+Set port aliases in jack for convenience. Afterwards, ports can be called via out1, out2, in1, in2, etc. (Note: From jack's perspective, capture or record ports are 'output' ports, and vice-versa)
 
 ```bash
-# From jack's perspective, output ports are capture or record ports, and vice-versa
 ins=\$(jack_lsp -p | awk '/output/{print previous_line}{previous_line=$0}')
 i=1
 for j in \${ins}; do jack_alias \${j} in\${i}; ((i++)); done
@@ -84,7 +91,7 @@ $
 
 ## Authors
 
-- **Jeremy Hughes** - *Initial work* - [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md)
+- **Jeremy Hughes** - [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md)
 
 - **Christopher Brown**
 
