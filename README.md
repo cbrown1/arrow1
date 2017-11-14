@@ -10,10 +10,6 @@ This is the same code as [recapture](https://gist.github.com/jedahu/5028736#file
 
 - [libsndfile](http://www.mega-nerd.com/libsndfile/)
 
-```
-Give examples
-```
-
 ### Installing
 
 Compile:
