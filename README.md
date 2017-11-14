@@ -26,15 +26,15 @@ make && sudo make install
 
 ## Usage
 
-Set port aliases in jack for convenience. Afterwards, ports can be called via out1, out2, in1, in2, etc. (Note: From jack's perspective, capture or record ports are 'output' ports, and vice-versa)
+Set port aliases in jack for convenience. Afterwards, ports can be called via out1, out2, in1, in2, etc. Aliases do not persist after restarts. (Note: From jack's perspective, capture or record ports are 'output' ports, and vice-versa)
 
 ```bash
-ins=\$(jack_lsp -p | awk '/output/{print previous_line}{previous_line=$0}')
+ins=$(jack_lsp -p | awk '/output/{print previous_line}{previous_line=$0}')
 i=1
-for j in \${ins}; do jack_alias \${j} in\${i}; ((i++)); done
-outs=\$(jack_lsp -p | awk '/input/{print previous_line}{previous_line=$0}')
+for j in ${ins}; do jack_alias ${j} in${i}; ((i++)); done
+outs=$(jack_lsp -p | awk '/input/{print previous_line}{previous_line=$0}')
 i=1
-for j in \${outs}; do jack_alias \${j} out\${i}; ((i++)); done
+for j in ${outs}; do jack_alias ${j} out${i}; ((i++)); done
 ```
 
 If you don't want to use aliases, go the hard way. List jack port names (your system will have different names):
@@ -59,6 +59,7 @@ $ olinout --ports
    6: firewire_pcm:000a35007ca897e1_cap_analog-6_in
    7: firewire_pcm:000a35007ca897e1_cap_analog-7_in
    8: firewire_pcm:000a35007ca897e1_cap_analog-8_in
+$ 
 ```
 Play a two-channel soundfile, record from channel 2 to a soundfile (no aliases):
 
