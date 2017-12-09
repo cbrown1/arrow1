@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/cbrown1/olinout.svg?branch=master)](https://travis-ci.org/cbrown1/olinout)
+
 # olinout
 
 Play and record multi-channel audio using jack.
