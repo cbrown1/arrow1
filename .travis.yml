@@ -1,0 +1,18 @@
+language: c
+
+sudo: false
+
+before_install:
+  - uname -a
+  - free -m
+  - df -h
+  - ulimit -a
+
+install:
+  - sudo apt-get install libjack-dev libsndfile1-dev
+
+script:
+  - make
+
+notifications:
+  email: false
