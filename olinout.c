@@ -1,3 +1,5 @@
+#include "cli.h"
+
 #include <stdlib.h>
 #include <argp.h>
 #include <stdio.h>
@@ -632,93 +634,6 @@ static int run_client(jack_client_t* client, recap_process_info_t* info) {
 
 // recapture code paste end
 
-const char *olinout_program_version =
-  "olinout v 1.0";
-
-/* Program documentation. */
-static char doc[] =
-  "olinout: Play and record multi-channel audio using jack.\nBased on recapture: https://gist.github.com/jedahu/5028736\nBugs to <cbrown1@pitt.edu>";
-
-/* A description of the arguments we accept. */
-static char args_doc[] = "FILE_READ";
-
-/* The options we understand. */
-static struct argp_option options[] = {
-  {"version", 'v', 0,      0,   "Print version info & exit" },
-  {"buffer",  'b', 0,      0,   "Jack buffer size" },
-  {"debug",   'd', "1",    0,   "1=Print debugging messages; 0=Don't" },
-  {"ports",   'p', 0,      0,   "Print available ports & exit" },
-  {"in",      'i', "",     0,   "Input ports from jack, comma-separated" },
-  {"out",     'o', "",     0,   "Output ports from jack, comma-separated" },
-  {"write",   'w', "FILE", 0,   "Path to file to write to" },
-  { 0,0,0,0,0 } /*   An options vector should be terminated by an option with all fields zero. */
-};
-
-/* Used by main to communicate with parse_opt. */
-struct arguments
-{
-  char *args[1];                /* arg1 & arg2 */
-  int show_ports, buffer, debug, version;
-  char *ports_in;
-  char *ports_out;
-  char *file_write;
-};
-
-/* Parse a single option. */
-static error_t
-parse_opt (int key, char *arg, struct argp_state *state)
-{
-  /* Get the input argument from argp_parse, which we
-     know is a pointer to our arguments structure. */
-  struct arguments *arguments = state->input;
-
-  switch (key)
-    {
-    case 'b':
-      arguments->buffer = atoi(arg);
-      break;
-    case 'p':
-      arguments->show_ports = 1;
-      break;
-    case 'd':
-      arguments->debug = atoi(arg);
-      break;
-    case 'v':
-      arguments->version = 1;
-    case 'i':
-      arguments->ports_in = arg;
-      break;
-    case 'o':
-      arguments->ports_out = arg;
-      break;
-    case 'w':
-      arguments->file_write = arg;
-      break;
-
-    case ARGP_KEY_ARG:
-      if (state->arg_num >= 1)
-        /* Too many arguments. */
-        argp_usage (state);
-
-      arguments->args[state->arg_num] = arg;
-
-      break;
-
-    case ARGP_KEY_END:
-//      if (state->arg_num < 1)
-//        /* Not enough arguments. */
-//        argp_usage (state);
-      break;
-
-    default:
-      return ARGP_ERR_UNKNOWN;
-    }
-  return 0;
-}
-
-/* Our argp parser. */
-static struct argp argp = { options, parse_opt, args_doc, doc };
-
 static void split_names(char* str, char** list) {
  int i = 0;
  char* s = strtok(str, ",");
@@ -749,23 +664,7 @@ int main (int argc, char **argv) {
  state.playing = IDLE;
  proc_info = &info;
 
- struct arguments arguments;
-
-  /* Default values. */
- arguments.version = 0;
- arguments.buffer = 65536;
- arguments.show_ports = 0;
- arguments.debug = 1;
- arguments.file_write = "-";
- arguments.ports_in = "-";
- arguments.ports_out = "-";
-
- argp_parse (&argp, argc, argv, 0, 0, &arguments);
-
- if (arguments.version == 1) {
-  printf ("%s, jack %s\n", olinout_program_version, jack_get_version_string());
-  exit(0);
- }
+ struct arguments arguments = handle_cli(argc, argv);
  debug = arguments.debug;
 
  if ((client = jack_client_open("olinout", JackNullOption, NULL)) == 0) {
@@ -826,7 +725,7 @@ int main (int argc, char **argv) {
 
 // Port names and file paths.
 
- proc_info->reader_info->path = arguments.args[0];
+ proc_info->reader_info->path = arguments.file_read;
  proc_info->writer_info->path = arguments.file_write;
 
  channel_count_w = array_length(in_port_names);

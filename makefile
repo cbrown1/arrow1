@@ -1,5 +1,5 @@
-olinout: olinout.c
-	gcc -B -Wall olinout.c -o olinout -lsndfile -ljack -lpthread
+olinout: olinout.c cli.h cli.c
+	gcc -B -Wall cli.c olinout.c -o olinout -lsndfile -ljack -lpthread
 
 install:
 	install olinout /usr/local/bin
