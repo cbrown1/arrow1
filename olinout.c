@@ -16,7 +16,8 @@
 
 // recapture code paste begin:
 
-#if 1
+// NDEBUG is standard-conforming macro telling if -g* options were not used, reuse it
+#ifndef NDEBUG
 #define DEBUG(...) (fprintf(stderr, "olinout: "), fprintf(stderr, __VA_ARGS__))
 #else
 #define DEBUG
@@ -212,7 +213,7 @@ static void cancel_process(recap_process_info_t* info) {
 }
 
 static void signal_handler(int sig) {
- MSG("signal received, exiting ...\n");
+ MSG("signal %d received, exiting ...\n", sig);
  cancel_process(proc_info);
 }
 
@@ -240,14 +241,16 @@ static void* common_thread(pthread_mutex_t* lock, pthread_cond_t* cond, io_threa
  pthread_cleanup_push(cu, arg);
  pthread_mutex_lock(lock);
  while (1) {
-   if ((status = fn(info)) != 0) break;
+   if ((status = fn(info)) != 0) 
+    break;
    pthread_cond_wait(cond, lock);
  }
  pthread_mutex_unlock(lock);
  *exit = status;
- if (status == FINISHED) *exit = 0;
- pthread_exit(exit);
+ if (status == FINISHED) 
+  *exit = 0;
  pthread_cleanup_pop(1);
+ pthread_exit(exit);
 }
 
 // This abstracts out the common parts of setting up a thread and its loop. The supplied `io_thread_fn` function is executed every iteration until it returns non zero. The supplied `cleanup_fn` is called whenever the thread is exited. After each iteration the thread waits until it is signalled to continue.
@@ -328,9 +331,9 @@ static int reader_body(void* buf, size_t space, recap_io_info_t* info) {
      ERR("reader thread: buffer underrun\n");
    }
    frames_got = frames_got + frame_count;
-   if (frames_got < frames_need) { 
+   if (frames_got < frames_need) {
     if (debug == 1) { DEBUG("read %i of %i frames\r", frames_got, frames_need); }
-   } else { 
+   } else {
     if (debug == 1) { DEBUG("read %i of %i frames\n", frames_got, frames_need); }
    }
    info->state->reading = RUNNING;
@@ -742,10 +745,11 @@ int main (int argc, char **argv) {
 // Connect to jack and set up jack and signal callbacks.
 
  int status = 0;
+ int jack_err;
  if (!(status = setup_writer_thread(proc_info->writer_info)) &&
      !(status = setup_reader_thread(proc_info->reader_info))) {
-   if (jack_activate(client)) {
-     ERR("cannot activate client\n");
+   if ((jack_err = jack_activate(client)) != 0) {
+     ERR("cannot activate client (Jack error: %d)\n", jack_err);
      status = 1;
    } else {
      connect_ports(in_port_names, out_port_names);
