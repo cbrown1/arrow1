@@ -382,7 +382,10 @@ static void io_cleanup(void* arg) {
 }
 
 static void io_free(recap_io_info_t* info) {
- jack_ringbuffer_free(info->ring);
+  // This check is necessary to avoid segfault when failed to setup both reader and writer.
+  if (info->ring != NULL) {
+    jack_ringbuffer_free(info->ring);
+  }
 }
 
 // `io_cleanup()` is passed to `common_thread` as the thread cleanup callback. `io_free()` is used at the end of `main()` to free resources which the jack thread may still be using after the IO threads exit.
