@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
+#include <float.h>
 #include <pthread.h>
 #include <sndfile.h>
 #include <jack/jack.h>
@@ -27,7 +28,13 @@
 
 // ### Structs and typedefs
 
+// Note: This is in fact float.
 typedef jack_default_audio_sample_t recap_sample_t;
+
+// Note: original value of -1 used as "error flag" is on the edge of valid [-1, 1]
+// sample value range and can appear in Jack stream naturally (esp. if driven > 100%);
+// changing this to some highly improbable value should improve robustness.
+#define RECAP_SAMPLE_ERR FLT_MAX
 
 // `jack_default_audio_sample_t` is a little long.
 
@@ -117,31 +124,33 @@ static size_t array_length(char** array) {
 
 typedef recap_sample_t (*next_value_fn) (void*);
 
+// TODO: This function is always called with `next_value()` function pointer, consider inlining it as function 
+// pointers make this highly ineffective.
 int uninterleave(recap_sample_t** buffers, size_t length, size_t count,
                 next_value_fn next_value, void* arg) {
- int status = 0;
  int i;
  int k;
  for (i = 0; i < count; i++) {
    for (k = 0; k < length; k++) {
      recap_sample_t sample = next_value(arg);
-     if (sample == -1) {
-       status = -1;
-       break;
+     if (sample == RECAP_SAMPLE_ERR) {
+       return -1;
      } else {
        buffers[k][i] = sample;
      }
    }
-   if (status) break;
  }
- return status;
+ return 0;
 }
 
+// Pull next sample from jack_ringbuffer passed as `arg`, return `RECAP_SAMPLE_ERR` on underrun, 
+// proper sample value otherwise.
 recap_sample_t next_value(void* arg) {
  recap_sample_t sample;
  jack_ringbuffer_t* rb = (jack_ringbuffer_t*) arg;
  size_t count = jack_ringbuffer_read(rb, (char*) &sample, sample_size);
- if (count < sample_size) sample = -1;
+ if (count < sample_size) 
+  return RECAP_SAMPLE_ERR;
  return sample;
 }
 
@@ -151,27 +160,29 @@ recap_sample_t next_value(void* arg) {
 
 typedef int (*write_value_fn) (recap_sample_t, void*);
 
+// TODO: This function is always called with `write_value()` function pointer, consider inlining it as function 
+// pointers make this highly ineffective.
 int interleave(recap_sample_t** buffers, size_t length, size_t count,
               write_value_fn write_value, void* arg) {
- int status = 0;
  int i;
  int k;
  for (i = 0; i < count; i++) {
    for (k = 0; k < length; k++) {
-     status = write_value(buffers[k][i], arg);
-     if (status) break;
+     int status = write_value(buffers[k][i], arg);
+     if (status) 
+      return status;
    }
-   if (status) break;
  }
- return status;
+ return 0;
 }
 
+// Push next sample to jack_ringbuffer passed as `arg`, return -1 status on overrun, 0 otherwise.
 int write_value(recap_sample_t sample, void* arg) {
- int status = 0;
  jack_ringbuffer_t* rb = (jack_ringbuffer_t*) arg;
  size_t count = jack_ringbuffer_write(rb, (char*) &sample, sample_size);
- if (count < sample_size) status = -1;
- return status;
+ if (count < sample_size) 
+  return -1;
+ return 0;
 }
 
 // `interleave()` reads data from an array of input buffers and uses the supplied function to write it interleaved.
