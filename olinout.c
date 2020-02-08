@@ -116,11 +116,15 @@ jack_client_t* client;
 
 // ### Helper functions
 
-static size_t array_length(char** array) {
+// Length of NULL-terminated array of pointers
+static int array_length_(const void** array) {
  int i = -1;
  while (array[++i] != NULL);
  return i;
 }
+
+// Addresses the casting necessary to silence pointer type mismatch warnings with array_length_()
+#define array_length(arr) array_length_((const void**)arr)
 
 // There is probably a more standard if not more general way to do this, but a) I couldn't find it, and b) this function does the job.
 
@@ -644,6 +648,34 @@ static void split_names(char* str, char** list) {
  list[i] = NULL;
 }
 
+static void dump_jack_ports() {
+  int size;
+  const char **ports_in;
+  ports_in = jack_get_ports (client, NULL, NULL,
+    JackPortIsPhysical|JackPortIsInput);
+  size = array_length(ports_in);
+
+  int i = 0;
+  printf("%i Output ports:\n", size);
+  while (ports_in[i] != NULL){
+    printf("  %2i: %s\n", i+1, ports_in[i]);
+    i++;
+  }
+  jack_free(ports_in);
+  const char **ports_out;
+  ports_out = jack_get_ports (client, NULL, NULL,
+    JackPortIsPhysical|JackPortIsOutput);
+  size = array_length(ports_out);
+
+  i = 0;
+  printf("%i Input ports:\n", size);
+  while (ports_out[i] != NULL){
+    printf("  %2i: %s\n", i+1, ports_out[i]);
+    i++;
+  }
+  jack_free(ports_out);
+}
+
 int main (int argc, char **argv) {
 
  recap_process_info_t info;
@@ -673,33 +705,8 @@ int main (int argc, char **argv) {
  }
 
  // output = capture
- if (arguments.show_ports == 1) {
-  int size;
-  const char **ports_in;
-  ports_in = jack_get_ports (client, NULL, NULL,
-  JackPortIsPhysical|JackPortIsInput);
-  for (size = 0; ports_in[size] != NULL; size++);
- 
-  int i = 0;
-  printf("%i Output ports:\n", size);
-  while (ports_in[i] != '\0'){
-      printf("  %2i: %s\n", i+1, ports_in[i]);
-      i++;
-  }
-  free(ports_in);
-  const char **ports_out;
-  ports_out = jack_get_ports (client, NULL, NULL,
-  JackPortIsPhysical|JackPortIsOutput);
-  for (size = 0; ports_out[size] != NULL; size++);
- 
-  i = 0;
-  printf("%i Input ports:\n", size);
-  while (ports_out[i] != '\0'){
-      printf("  %2i: %s\n", i+1, ports_out[i]);
-      i++;
-  }
-  free(ports_out);
-
+ if (arguments.show_ports) {
+  dump_jack_ports();
   exit(0);
  }
 
