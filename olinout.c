@@ -215,8 +215,8 @@ typedef void (*cleanup_fn) (void*);
 #define FINISHED -1
 
 static void* common_thread(pthread_mutex_t* lock, pthread_cond_t* cond, io_thread_fn fn, cleanup_fn cu, void* arg) {
- int* exit = (int*) malloc(sizeof(int*));
- memset(exit, 0, sizeof(*exit));
+ int* exit = (int*) malloc(sizeof(int));
+ *exit = 0;
  int status = 0;
  recap_io_info_t* info = (recap_io_info_t*) arg;
  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
