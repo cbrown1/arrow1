@@ -3,6 +3,7 @@
 #include <argp.h>
 #include <jack/jack.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 const char *olinout_program_version = "olinout v 1.0";
 
@@ -76,8 +77,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
         if (!arguments->show_ports && 
             !arguments->version && 
             !arguments->file_write) 
-            {
-            // Make the playback file path mandatory.
+        {
+            // At least one of the following params is mandatory:
+            // -p, -v, -w or positional arg. 
             argp_usage (state);
         }
         break;
@@ -87,8 +89,26 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
-char ports_in_def[] = "1,2";
-char ports_out_def[] = "1,2";
+static bool validate_arguments(const struct arguments* args) {
+    if (args->show_ports || args->version) {
+        // These args override any others and disable their validation
+        return true;
+    }
+    if (args->file_write == NULL && args->file_read == NULL) {
+        fprintf(stderr, "olinout: at least one file name for recording or playback must be present.\n");
+        return false;
+    }
+    if (args->file_write != NULL && (args->file_read == NULL || args->duration == 0)) {
+        fprintf(stderr, "olinout: recording requires either playback file name or duration to be set.\n");
+        return false;
+    }
+
+    return true;
+}
+
+// Reasonable defaults for stereo working out-of-the-box on many Jack systems
+char ports_in_def[] = "system:capture_1,system:capture_2";
+char ports_out_def[] = "system:playback_1,system:playback_2";
 
 struct arguments handle_cli(int argc, char** argv) {
     struct argp argp = { options, parse_opt, args_doc, doc };
@@ -107,6 +127,10 @@ struct arguments handle_cli(int argc, char** argv) {
     if (arguments.version) {
         printf ("%s, jack %s\n", olinout_program_version, jack_get_version_string());
         exit(0);
+    }
+
+    if (!validate_arguments(&arguments)) {
+        exit(1);
     }
     return arguments;
 }

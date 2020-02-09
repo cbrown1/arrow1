@@ -8,7 +8,14 @@ project(olinout
 )
 
 find_library(SNDFILE_LIBS sndfile)
+if(NOT SNDFILE_LIBS) 
+    message(FATAL_ERROR "libsndfile not found")
+endif()
+
 find_library(JACK_LIBS jack)
+if(NOT JACK_LIBS)
+    message(FATAL_ERROR "libjack not found")
+endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

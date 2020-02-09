@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <math.h>
 #include <float.h>
+#include <assert.h>
 #include <pthread.h>
 #include <sndfile.h>
 #include <jack/jack.h>
@@ -24,6 +25,9 @@
 #endif
 #define MSG(...) (fprintf(stderr, "olinout: "), fprintf(stderr, __VA_ARGS__))
 #define ERR(...) (fprintf(stderr, "olinout: error: "), fprintf(stderr, __VA_ARGS__))
+#define DBG(...) do { if (debug) { DEBUG(__VA_ARGS__); } } while (0)
+
+#define JACK_CLIENT_NAME "olinout"
 
 // Usage notice and some useful macros.
 
@@ -50,32 +54,36 @@ typedef enum _recap_status {
 // Before initial synchronization the read thread is `IDLE`, once reading has commenced it is `RUNNING`, and when reading is finished it is `DONE`. The jack processing thread also uses `IDLE` and `DONE`.
 
 typedef struct _recap_state {
- volatile int can_play;
- volatile int can_capture;
- volatile int can_read;
- volatile recap_status_t reading;
- volatile recap_status_t playing;
+  volatile int can_play;
+  volatile int can_capture;
+  volatile int can_read;
+  volatile recap_status_t reading;
+  volatile recap_status_t playing;
+  // Store this for debugging & inferring dependent values.
+  jack_nframes_t jack_fs;
 } recap_state_t;
 
 // A single instance of this struct is shared among all three threads. Play and record start when `can_play`, `can_capture`, and `can_read` (which correspond to the three threads) are all true; they finish when `reading` and `playing` are both `DONE`.
 
 typedef struct _recap_io_info {
- pthread_t thread_id;
- char* path;
- SNDFILE* file;
- jack_ringbuffer_t* ring;
- long underruns;
- recap_state_t* state;
+  pthread_t thread_id;
+  const char* path;
+  SNDFILE* file;
+  // Stores number of available frames for playback or controls number of frames to record.
+  size_t frame_count;
+  jack_ringbuffer_t* ring;
+  long underruns;
+  recap_state_t* state;
 } recap_io_info_t;
 
 // Both read and write threads receive an instance of this struct as their only argument.
 
 typedef struct _recap_process_info {
- long overruns;
- long underruns;
- recap_io_info_t* writer_info;
- recap_io_info_t* reader_info;
- recap_state_t* state;
+  long overruns;
+  long underruns;
+  recap_io_info_t* writer_info;
+  recap_io_info_t* reader_info;
+  recap_state_t* state;
 } recap_process_info_t;
 
 // An instance of this struct is passed to the callback responsible for processing the signals.
@@ -107,9 +115,9 @@ int frames_got = 0;
 int jack_fs = 0;
 int debug = 0;
 jack_nframes_t ring_size = 65536; /* pow(4, 8) */
-jack_port_t* recap_in_ports[MAX_PORTS];
-jack_port_t* recap_out_ports[MAX_PORTS];
-jack_client_t* client;
+jack_port_t* recap_in_ports[MAX_PORTS] = {0};
+jack_port_t* recap_out_ports[MAX_PORTS] = {0};
+jack_client_t* client = NULL;
 
 // Variables that are not changed subsequent to initialization and therefore do not need to be in thread specific structs.
 
@@ -312,12 +320,12 @@ static int reader_body(void* buf, size_t space, recap_io_info_t* info) {
  sf_count_t nframes = space / frame_size_r;
  sf_count_t frame_count = sf_readf_float(info->file, buf, nframes);
  if (frame_count == 0) {
-   if (debug == 1) { DEBUG("reached end of read file: %s\n", info->path); }
+   DBG("reached end of read file: %s\n", info->path);
    info->state->reading = DONE;
    status = FINISHED;
  } else if (underfill > 0) {
    if (frames_got == frames_need) {
-    if (debug == 1) { DEBUG("reached end of read file: %s\n", info->path); }
+    DBG("reached end of read file: %s\n", info->path);
     info->state->reading = DONE;
     status = FINISHED;
    } else {
@@ -332,14 +340,14 @@ static int reader_body(void* buf, size_t space, recap_io_info_t* info) {
    }
    frames_got = frames_got + frame_count;
    if (frames_got < frames_need) {
-    if (debug == 1) { DEBUG("read %i of %i frames\r", frames_got, frames_need); }
+    DBG("read %i of %i frames\r", frames_got, frames_need);
    } else {
-    if (debug == 1) { DEBUG("read %i of %i frames\n", frames_got, frames_need); }
+    DBG("read %i of %i frames\n", frames_got, frames_need);
    }
    info->state->reading = RUNNING;
    if (frame_count < nframes && underfill == 0) {
-     if (debug == 1) { DEBUG("expected %ld frames but only read %ld,\n", nframes, frame_count); }
-     if (debug == 1) { DEBUG("wait for one cycle to make sure.\n"); }
+     DBG("expected %ld frames but only read %ld,\n", nframes, frame_count);
+     DBG("wait for one cycle to make sure.\n");
      ++underfill;
    }
  }
@@ -377,8 +385,10 @@ static int writer_thread_fn(recap_io_info_t* info) {
 // Read and write implementations of `io_thread_fn`. Due to the earlier abstraction these definitions are simple.
 
 static void io_cleanup(void* arg) {
- recap_io_info_t* info = (recap_io_info_t*) arg;
- sf_close(info->file);
+  recap_io_info_t* info = (recap_io_info_t*) arg;
+  if (info->file) {
+    sf_close(info->file);
+  }
 }
 
 static void io_free(recap_io_info_t* info) {
@@ -483,53 +493,66 @@ static int process(jack_nframes_t nframes, void* arg) {
 
 // Data has been written to the writer thread’s ringbuffer and removed from the reader thread’s ringbuffer, so signal each thread to begin another iteration.
 
+#define MIN_(a, b) ( a < b ? a : b )
+
 // ### Thread setup and running
 
-static int setup_writer_thread(recap_io_info_t* info) {
- int status = 0;
- SF_INFO sf_info;
- sf_info.samplerate = jack_get_sample_rate(client);
- sf_info.channels = channel_count_w;
- sf_info.format = SF_FORMAT_WAV | SF_FORMAT_PCM_32;
- if ((info->file = sf_open(info->path, SFM_WRITE, &sf_info)) == NULL) {
-   ERR("cannot open file to write \"%s\" (%s)\n",
-       info->path, sf_strerror(info->file));
-   jack_client_close(client);
-   status = EIO;
- }
- if (debug == 1) { DEBUG("file to write: %s\n", info->path); }
- if (debug == 1) { DEBUG("writing %i channels\n", channel_count_w); }
- info->ring = jack_ringbuffer_create(sample_size * ring_size);
- memset(info->ring->buf, 0, info->ring->size);
- info->state->can_capture = 0;
- pthread_create(&info->thread_id, NULL, writer_thread, info);
- return status;
+static int setup_writer_thread(recap_io_info_t* info, struct arguments* args) {
+  SF_INFO sf_info = {0};
+  sf_info.samplerate = info->state->jack_fs;
+  sf_info.channels = channel_count_w;
+  sf_info.format = SF_FORMAT_WAV | SF_FORMAT_PCM_32;
+  if ((info->file = sf_open(info->path, SFM_WRITE, &sf_info)) == NULL) {
+    ERR("cannot open file to write \"%s\" (%s)\n",
+        info->path, sf_strerror(info->file));
+    return EIO;
+  }
+  DBG("file to write: %s\n", info->path);
+  info->ring = jack_ringbuffer_create(sample_size * ring_size);
+  memset(info->ring->buf, 0, info->ring->size);
+  info->state->can_capture = 0;
+  pthread_create(&info->thread_id, NULL, writer_thread, info);
+  return 0;
 }
 
 // Set up resources for the writer thread then create the thread. This means opening a (multichannel) WAV file to write to, creating a ringbuffer, and touching all its allocated memory to prevent pagefaults later on.
 
-static int setup_reader_thread(recap_io_info_t* info) {
- int status = 0;
- SF_INFO sf_info;
- sf_info.format = 0;
- if (debug == 1) { DEBUG("file to read: %s\n", info->path); }
- if ((info->file = sf_open(info->path, SFM_READ, &sf_info)) == NULL) {
-   ERR("cannot read file: %s\n", info->path);
-   status = EIO;
- }
- channel_count_r = sf_info.channels;
- frame_size_r = channel_count_r * sample_size;
- if (debug == 1) { DEBUG("reading %i channels\n", channel_count_r); }
- frames_need = sf_info.frames;
- if (sf_info.samplerate != jack_get_sample_rate(client)) {
-   ERR("output sound file sample rate: %i; jack sample rate: %i)\n", sf_info.samplerate, jack_get_sample_rate(client));
-   cancel_process(proc_info);
- }
- info->ring = jack_ringbuffer_create(sample_size * ring_size);
- memset(info->ring->buf, 0, info->ring->size);
- info->state->can_read = 0;
- pthread_create(&info->thread_id, NULL, reader_thread, info);
- return status;
+static int setup_reader_thread(recap_io_info_t* info, struct arguments* args) {
+  SF_INFO sf_info = {0};
+  DBG("file to read: %s\n", info->path);
+  if ((info->file = sf_open(info->path, SFM_READ, &sf_info)) == NULL) {
+    ERR("cannot read file: %s\n", info->path);
+    return EIO;
+  }
+  if (sf_info.samplerate != info->state->jack_fs) {
+    ERR("input sound file sample rate: %i; jack sample rate: %i\n", sf_info.samplerate, info->state->jack_fs);
+    return EINVAL;
+  }
+  if (sf_info.channels != channel_count_r) {
+    ERR("input sound file channels: %i; jack output channels: %i\n", sf_info.channels, channel_count_r);
+    return EINVAL;
+  }
+  sf_count_t frames_left = sf_info.frames;
+  sf_count_t start_frame = (sf_count_t)(args->start_offset * info->state->jack_fs + .5);
+  start_frame = MIN_(frames_left, start_frame);
+  if (sf_seek(info->file, start_frame, SEEK_SET) < 0) {
+    ERR("failed seeking read file to start_offset\n");
+    return EIO;
+  }
+  frames_left -= start_frame;
+  if (args->duration != 0) {
+    sf_count_t duration_frames = (sf_count_t)(args->duration * info->state->jack_fs + .5);
+    frames_left = MIN_(frames_left, duration_frames);
+  }
+  info->frame_count = frames_left;
+  frame_size_r = channel_count_r * sample_size;
+  frames_need = frames_left;
+
+  info->ring = jack_ringbuffer_create(sample_size * ring_size);
+  memset(info->ring->buf, 0, info->ring->size);
+  info->state->can_read = 0;
+  pthread_create(&info->thread_id, NULL, reader_thread, info);
+  return 0;
 }
 
 // Same purpose as the previous function but for the reader thread. Opens a (multichannel) WAV file to read from, creates a ringbuffer, and touches all its memory.
@@ -537,26 +560,27 @@ static int setup_reader_thread(recap_io_info_t* info) {
 // Similarites between these two functions could probably be extracted into a general `setup_io_thread()` function.
 
 static int run_io_thread(recap_io_info_t* info) {
- int* status;
- int ret;
- pthread_join(info->thread_id, (void**) &status);
- if (status == PTHREAD_CANCELED) {
-   ret = EPIPE;
- } else {
-   ret = *status;
-   free(status);
- }
- return ret;
+  int* status;
+  int ret;
+  pthread_join(info->thread_id, (void**) &status);
+  if (status == PTHREAD_CANCELED) {
+    ret = EPIPE;
+  } else {
+    ret = *status;
+    free(status);
+  }
+  return ret;
 }
 
 // Joins to a thread and returns its exit status.
 
 // ### Port registration and connection
 
-static jack_port_t* register_port(char* name, int flags) {
-  jack_port_t* port;
-  if ((port = jack_port_register(client, name, JACK_DEFAULT_AUDIO_TYPE, flags, 0)) == 0) {
-    if (debug == 1) { DEBUG("cannot register port \"%s\"\n", name); }
+static jack_port_t* register_port(const char* name, int flags) {
+  const char* short_name = name + strlen(JACK_CLIENT_NAME) + 1;
+  jack_port_t* port = jack_port_register(client, short_name, JACK_DEFAULT_AUDIO_TYPE, flags, 0);
+  if (!port) {
+    DBG("cannot register port \"%s\"\n", short_name);
     jack_client_close(client);
     exit(1);
   }
@@ -565,35 +589,31 @@ static jack_port_t* register_port(char* name, int flags) {
 
 // Register the named port with the jack process.
 
+
 static void connect(const char* out, const char* in) {
- if (jack_connect(client, out, in)) {
-   if (debug == 1) { DEBUG("cannot connect port \"%s\" to \"%s\"\n", out, in); }
-   jack_client_close(client);
-   exit(1);
- }
+  int jack_err;
+  if ((jack_err = jack_connect(client, out, in)) != 0) {
+    DBG("cannot connect port \"%s\" to \"%s\"; Jack error: %d\n", out, in, jack_err);
+    jack_client_close(client);
+    exit(1);
+  }
 }
 
-static void connect_ports(char** in_names, char** out_names) {
- int i;
- char* s;
- for (i = 0; i < channel_count_w; i++) {
-   char prt[32];
-   sprintf(prt, "olinout:input_%i", i);
-   char* shrt = prt + strlen("olinout:");
-   register_port(shrt, JackPortIsInput);
-   recap_in_ports[i] = jack_port_by_name(client, prt);
-   if ((s = in_names[i]) != NULL) connect(s, prt);
- }
- recap_in_ports[i] = NULL;
- for (i = 0; i < channel_count_r; i++) {
-   char prt[32];
-   sprintf(prt, "olinout:output_%i", i);
-   char* shrt = prt + strlen("olinout:");
-   register_port(shrt, JackPortIsOutput);
-   recap_out_ports[i] = jack_port_by_name(client, prt);
-   if ((s = out_names[i]) != NULL) connect(prt, s);
- }
- recap_out_ports[i] = NULL;
+static void connect_ports(const char** in_names, const char** out_names) {
+  int i;
+  char prt[32];
+  for (i = 0; i < channel_count_w; i++) {
+    sprintf(prt, JACK_CLIENT_NAME ":input_%i", i);
+    recap_in_ports[i] = register_port(prt, JackPortIsInput);
+    assert(in_names[i] != NULL);
+    connect(in_names[i], prt);
+  }
+  for (i = 0; i < channel_count_r; i++) {
+    sprintf(prt, JACK_CLIENT_NAME ":output_%i", i);
+    recap_out_ports[i] = register_port(prt, JackPortIsOutput);
+    assert(out_names[i] != NULL);
+    connect(prt, out_names[i]);
+  }
 }
 
 // Initialize `recap_in_ports` and `recap_out_ports` with this client’s in and out ports, and connect them to the supplied jack ports.
@@ -601,12 +621,12 @@ static void connect_ports(char** in_names, char** out_names) {
 // ### Set callbacks and handlers
 
 static void set_handlers(jack_client_t* client, recap_process_info_t* info) {
- jack_set_process_callback(client, process, info);
- jack_on_shutdown(client, jack_shutdown, info);
- signal(SIGQUIT, signal_handler);
- signal(SIGTERM, signal_handler);
- signal(SIGHUP, signal_handler);
- signal(SIGINT, signal_handler);
+  jack_set_process_callback(client, process, info);
+  jack_on_shutdown(client, jack_shutdown, info);
+  signal(SIGQUIT, signal_handler);
+  signal(SIGTERM, signal_handler);
+  signal(SIGHUP, signal_handler);
+  signal(SIGINT, signal_handler);
 }
 
 // Set jack callbacks and signal handlers.
@@ -614,28 +634,28 @@ static void set_handlers(jack_client_t* client, recap_process_info_t* info) {
 // ### Run jack client
 
 static int run_client(jack_client_t* client, recap_process_info_t* info) {
- recap_state_t* state = info->state;
+  recap_state_t* state = info->state;
 
- state->can_play    = 1;
- state->can_capture = 1;
- state->can_read    = 1;
+  state->can_play    = 1;
+  state->can_capture = 1;
+  state->can_read    = 1;
 
- int reader_status = run_io_thread(info->reader_info);
- int writer_status = run_io_thread(info->writer_info);
- int other_status = 0;
+  int reader_status = run_io_thread(info->reader_info);
+  int writer_status = run_io_thread(info->writer_info);
+  int other_status = 0;
 
- if (info->overruns > 0) {
-   ERR("olinout failed with %ld overruns.\n", info->overruns);
-   ERR("try a bigger buffer than -b %" PRIu32 ".\n", ring_size);
-   other_status = EPIPE;
- }
- long underruns = info->underruns + info->reader_info->underruns;
- if (underruns > 0) {
-   ERR("olinout failed with %ld underruns.\n", underruns);
-   ERR("try a bigger buffer than -b %" PRIu32 ".\n", ring_size);
-   other_status = EPIPE;
- }
- return reader_status || writer_status || other_status;
+  if (info->overruns > 0) {
+    ERR("olinout failed with %ld overruns.\n", info->overruns);
+    ERR("try a bigger buffer than -b%d.\n", ring_size);
+    other_status = EPIPE;
+  }
+  long underruns = info->underruns + info->reader_info->underruns;
+  if (underruns > 0) {
+    ERR("olinout failed with %ld underruns.\n", underruns);
+    ERR("try a bigger buffer than -b%d.\n", ring_size);
+    other_status = EPIPE;
+  }
+  return reader_status || writer_status || other_status;
 }
 
 // Run reader and writer threads, and return their status.
@@ -644,14 +664,14 @@ static int run_client(jack_client_t* client, recap_process_info_t* info) {
 
 // recapture code paste end
 
-static void split_names(char* str, char** list) {
- int i = 0;
- char* s = strtok(str, ",");
- while (s != NULL) {
-   list[i++] = s;
-   s = strtok(NULL, ",");
- }
- list[i] = NULL;
+static void split_names(char* str, const char** list) {
+  int i = 0;
+  char* s = strtok(str, ",");
+  while (s != NULL) {
+    list[i++] = s;
+    s = strtok(NULL, ",");
+  }
+  list[i] = NULL;
 }
 
 static void dump_jack_ports() {
@@ -683,88 +703,78 @@ static void dump_jack_ports() {
 }
 
 int main (int argc, char **argv) {
+  recap_process_info_t info;
+  recap_io_info_t reader_info;
+  recap_io_info_t writer_info;
+  recap_state_t state;
+  memset(&info, 0, sizeof(info));
+  memset(&reader_info, 0, sizeof(reader_info));
+  memset(&writer_info, 0, sizeof(writer_info));
+  memset(&state, 0, sizeof(state));
+  info.reader_info = &reader_info;
+  info.writer_info = &writer_info;
+  info.state = &state;
+  reader_info.state = &state;
+  writer_info.state = &state;
+  state.can_play = 0;
+  state.reading = IDLE;
+  state.playing = IDLE;
+  proc_info = &info;
 
- recap_process_info_t info;
- recap_io_info_t reader_info;
- recap_io_info_t writer_info;
- recap_state_t state;
- memset(&info, 0, sizeof(info));
- memset(&reader_info, 0, sizeof(reader_info));
- memset(&writer_info, 0, sizeof(writer_info));
- memset(&state, 0, sizeof(state));
- info.reader_info = &reader_info;
- info.writer_info = &writer_info;
- info.state = &state;
- reader_info.state = &state;
- writer_info.state = &state;
- state.can_play = 0;
- state.reading = IDLE;
- state.playing = IDLE;
- proc_info = &info;
+  struct arguments args = handle_cli(argc, argv);
+  debug = args.debug;
 
- struct arguments arguments = handle_cli(argc, argv);
- debug = arguments.debug;
+  if ((client = jack_client_open("olinout", JackNullOption, NULL)) == 0) {
+    ERR("jack server not running?\n");
+    exit(1);
+  }
 
- if ((client = jack_client_open("olinout", JackNullOption, NULL)) == 0) {
-   ERR("jack server not running?\n");
-   exit(1);
- }
+  // output = capture
+  if (args.show_ports) {
+    dump_jack_ports();
+    exit(0);
+  }
 
- // output = capture
- if (arguments.show_ports) {
-  dump_jack_ports();
-  exit(0);
- }
+  state.jack_fs = jack_get_sample_rate (client);
+  DBG("jack sample rate: %i\n", state.jack_fs);
 
- jack_fs = jack_get_sample_rate (client);
- if (debug == 1) { DEBUG ("jack sample rate: %i\n", jack_fs); }
+  set_handlers(client, proc_info);
 
- set_handlers(client, proc_info);
+  const char* in_port_names[MAX_PORTS];
+  const char* out_port_names[MAX_PORTS];
 
- char* in_port_names[MAX_PORTS];
- char* out_port_names[MAX_PORTS];
+  split_names(args.ports_in, in_port_names);
+  split_names(args.ports_out, out_port_names);
 
- split_names(arguments.ports_in, in_port_names);
- split_names(arguments.ports_out, out_port_names);
+  reader_info.path = args.file_read;
+  writer_info.path = args.file_write;
 
-//  int count = 0;
-//  char** p_in  = in_port_names; /* assign a pointer temp that we will use for the iteration */
-//  while(*p_in != NULL)     /* while the value contained in the first level of temp is not NULL */
-//  {
-//      printf("INPORT: %s\n", *p_in++); /* print the value and increment the pointer to the next cell */
-//      count++;
-//  }
-//  printf("Count is %d\n", count);
+  channel_count_w = array_length(in_port_names);
+  channel_count_r = array_length(out_port_names);
+  frame_size_w = channel_count_w * sample_size;
+  // Writer thread channel count and frame size. Those for the reader thread are taken from the input file in `setup_reader_thread()`.
 
-// Port names and file paths.
+  int status = 0;
+  int jack_err;
+  if (reader_info.path != NULL && (status = setup_reader_thread(&reader_info, &args)) != 0) 
+    goto finally;
 
- proc_info->reader_info->path = arguments.file_read;
- proc_info->writer_info->path = arguments.file_write;
+  if (writer_info.path != NULL && (status = setup_writer_thread(&writer_info, &args)) != 0)
+    goto finally;
 
- channel_count_w = array_length(in_port_names);
- frame_size_w = channel_count_w * sample_size;
-// Writer thread channel count and frame size. Those for the reader thread are taken from the input file in `setup_reader_thread()`.
+  if ((jack_err = jack_activate(client)) != 0) {
+    ERR("cannot activate client (Jack error: %d)\n", jack_err);
+    status = 1;
+    goto finally;
+  } 
 
-// Connect to jack and set up jack and signal callbacks.
+  connect_ports(in_port_names, out_port_names);
+  DBG("connected ports\n");
+  status = run_client(client, proc_info);
 
- int status = 0;
- int jack_err;
- if (!(status = setup_writer_thread(proc_info->writer_info)) &&
-     !(status = setup_reader_thread(proc_info->reader_info))) {
-   if ((jack_err = jack_activate(client)) != 0) {
-     ERR("cannot activate client (Jack error: %d)\n", jack_err);
-     status = 1;
-   } else {
-     connect_ports(in_port_names, out_port_names);
-     if (debug == 1) { DEBUG("connected ports\n"); }
-     status = run_client(client, proc_info);
-     jack_client_close(client);
-   }
- }
-
-// Provided the IO threads execute ok, run this client and then close it once `run_client()` returns.
-
- io_free(proc_info->reader_info);
- io_free(proc_info->writer_info);
- return status;
+finally:
+  jack_client_close(client);
+  io_free(proc_info->reader_info);
+  io_free(proc_info->writer_info);
+  return status;
 }
