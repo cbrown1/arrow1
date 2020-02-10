@@ -1,5 +1,5 @@
-olinout: olinout.c cli.h cli.c
-	gcc -B -Wall cli.c olinout.c -o olinout -lsndfile -ljack -lpthread
+olinout: cli.cpp io.cpp jack_client.cpp log.cpp main.cpp reactor.cpp
+	g++ -std=gnu++14 -B -Wall cli.cpp io.cpp jack_client.cpp log.cpp main.cpp reactor.cpp -o olinout -lsndfile -ljack -lpthread -lboost_program_options
 
 install:
 	install olinout /usr/local/bin

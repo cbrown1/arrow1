@@ -4,7 +4,7 @@ project(olinout
     VERSION 1.0
     DESCRIPTION "Play and record multi-channel audio using jack."
     HOMEPAGE_URL "https://github.com/cbrown1/olinout"
-    LANGUAGES C
+    LANGUAGES CXX
 )
 
 find_library(SNDFILE_LIBS sndfile)
@@ -17,15 +17,20 @@ if(NOT JACK_LIBS)
     message(FATAL_ERROR "libjack not found")
 endif()
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# required for out-of-order variable decls
-set(CMAKE_C_STANDARD 99)
+# set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost COMPONENTS program_options REQUIRED)
+
+set(CMAKE_CXX_STANDARD 14)
 
 add_executable(olinout
-    olinout.c
-    cli.c
+    cli.cpp 
+    io.cpp
+    jack_client.cpp
+    log.cpp
+    main.cpp
+    reactor.cpp
 )
 
 target_link_libraries(olinout
@@ -33,5 +38,7 @@ target_link_libraries(olinout
         ${SNDFILE_LIBS}
         ${JACK_LIBS}
         Threads::Threads
+        Boost::boost
+        Boost::program_options
     )
 
