@@ -12,6 +12,8 @@ This is the same code as [recapture](https://gist.github.com/jedahu/5028736#file
 
 - [libsndfile](http://www.mega-nerd.com/libsndfile/)
 
+- [Boost](https://www.boost.org/) - Apart from header libraries libboost-program-options binary is required.
+
 ## Installing
 
 ### Download:
@@ -24,6 +26,12 @@ git clone https://github.com/cbrown1/olinout.git
 
 ```bash
 make && sudo make install
+```
+
+Or with CMake, which gives more control over the process:
+
+```bash
+mkdir build && cd build && cmake ... && make
 ```
 
 ## Usage
@@ -66,7 +74,7 @@ $
 Play a two-channel soundfile, record from channel 2 to a soundfile (no aliases):
 
 ```bash
-$ olinout -o firewire_pcm:000a35007ca897e1_pbk_analog-1_out,firewire_pcm:000a35007ca897e1_pbk_analog-1_out -i firewire_pcm:000a35007ca897e1_cap_analog-2_in --write in_1_channel.wav test/2_channels.wav
+$ olinout -o firewire_pcm:000a35007ca897e1_pbk_analog-1_out,firewire_pcm:000a35007ca897e1_pbk_analog-1_out -i firewire_pcm:000a35007ca897e1_cap_analog-2_in --output-file in_1_channel.wav test/2_channels.wav
 olinout: jack sample rate: 44100
 olinout: file to write: in_1_channel.wav
 olinout: writing 1 channels
@@ -80,7 +88,7 @@ $
 The same thing, using aliases created above:
 
 ```bash
-$ olinout -out=out1,out2 -in=in2 --write=in_1_channel.wav test/2_channels.wav
+$ olinout --out=out1,out2 --in=in2 --output-file=in_1_channel.wav test/2_channels.wav
 olinout: jack sample rate: 44100
 olinout: file to write: in_1_channel.wav
 olinout: writing 1 channels
@@ -97,6 +105,8 @@ $
 - **Jeremy Hughes** - [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md)
 
 - **Christopher Brown**
+
+- [**Andrzej Ciarkowski**](https://github.com/andrzejc)
 
 ## License
 
