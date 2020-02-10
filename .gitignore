@@ -1,0 +1,13 @@
+
+# virtualenv stuff
+/bin
+/include
+/lib
+/lib64
+/share
+/pyvenv.cfg
+
+# usual location of CMake build artifacts
+/build
+# VSCode stuff
+/.vscode

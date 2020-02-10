@@ -25,9 +25,9 @@ def olinout(outwav, outports, inports, inwav=None, fs=44100., buffsize=65536):
         infile = tempfile.NamedTemporaryFile(suffix='.wav',delete=False)
         infilename = infile.name
 
-    cmd = 'olinout --inports={} --outports={} --bufsize={:} {} {}'.format(','.join(inports), ','.join(outports), buffsize, outfilename, infilename)
+    cmd = 'olinout --in={} --out={} --buffer={:} {} {}'.format(','.join(inports), ','.join(outports), buffsize, outfilename, infilename)
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    std_out, std_err = p.communicate()
+    std_out, _ = p.communicate()
     print(std_out)
     if not inwav:
         ar,fs = m.read_file(infilename)
@@ -38,5 +38,5 @@ def olinout(outwav, outports, inports, inwav=None, fs=44100., buffsize=65536):
 def get_ports():
     cmd = 'olinout --ports'
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    std_out, std_err = p.communicate()
+    std_out, _ = p.communicate()
     return std_out
