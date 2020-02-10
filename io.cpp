@@ -47,9 +47,7 @@ void IoWorker::join() {
 }
 
 void IoWorker::wake() {
-    std::unique_lock<std::mutex> lock{mx_};
     cv_.notify_one();
-    lock.unlock();
 }
 
 void IoWorker::stop() {
