@@ -33,7 +33,9 @@ IoWorker::IoWorker(size_t sample_rate, size_t channel_count, size_t buffer_size)
 
 void IoWorker::join() {
     if (thread_) {
+        ldebug("IoWorker::join(): waiting for worker thread\n");
         thread_->join();
+        thread_.reset();
     }
     if (ex_) {
         ldebug("IoWorker::join(): rethrowing exception from worker thread\n");
@@ -51,9 +53,11 @@ void IoWorker::wake() {
 }
 
 void IoWorker::stop() {
-    ldebug("IoWorker::stop(): requesting worker stop\n");
-    break_ = true;
-    wake();
+    if (!break_) {
+        ldebug("IoWorker::stop(): requesting worker stop\n");
+        break_ = true;
+        wake();
+    }
     join();
 }
 
@@ -84,7 +88,8 @@ Reader::Reader(
         throw runtime_error{str(format("input file channels: %1%; engine channels: %2%")
             % si.channels % channel_count_)};
     }
-
+    ldebug("Reader: reading from %s with %ld sample rate and %ld channels\n", 
+        path.c_str(), sample_rate_, channel_count_);
     sf_count_t frames_avail = si.frames;
     sf_count_t start_frame = start_offset_secs * sample_rate_ + .5;
     start_frame = std::min(frames_avail, start_frame);
@@ -167,6 +172,8 @@ Writer::Writer(
     if (!sf_) {
         throw runtime_error{str(format("writer can't open file %1%") % path)};
     }
+    ldebug("Writer: writing to %s with %ld sample rate and %ld channels\n", 
+        path.c_str(), sample_rate_, channel_count_);
     needed_ = duration_secs * sample_rate_ + .5;
     thread_.reset(new std::thread(&Writer::pump, this));
 }

@@ -57,6 +57,15 @@ void main(int argc, char** argv) {
     };
 
     reactor.wait_finished();
+
+    if (reader) {
+        reader->stop();
+        std::cout << "frames read: " << reader->frames_done() << "\n";
+    }
+    if (writer) {
+        writer->stop();
+        std::cout << "frames written: " << writer->frames_done() << "\n";
+    }
 }
 }
 

@@ -11,10 +11,12 @@
 #include <stdexcept>
 #include <chrono>
 #include <cstring>
+#include <csignal>
 
 namespace olo {
 using std::unique_ptr;
 using std::runtime_error;
+using std::signal;
 using boost::format;
 
 namespace {
@@ -37,6 +39,7 @@ auto create_port(JackClient& client, const string& name, int flags) {
 }
 
 Reactor* instance = nullptr;
+const int SIGNALS_INTERCEPT[] = {SIGQUIT, SIGTERM, SIGHUP, SIGINT};
 }
 
 void Reactor::register_ports(const vector<string>& input_ports, const vector<string>& output_ports) {
@@ -130,8 +133,10 @@ Reactor::Reactor(
     if (0 != (err = jack_set_process_callback(client_.handle(), process_, this)))  {
         throw runtime_error{str(format("failed setting Jack process callback with error %1%") % err)};
     }
-    // TODO setup signal and shutdown handlers
-
+    jack_on_shutdown(client_.handle(), shutdown_, this);
+    for (int sig: SIGNALS_INTERCEPT) {
+        signal(sig, signal_handler_);
+    }
     activate();
     try {
         connect_ports(input_ports, output_ports);
@@ -144,6 +149,10 @@ Reactor::Reactor(
 
 Reactor::~Reactor() {
     deactivate();
+    // Restore original signal handlers
+    for (int sig: SIGNALS_INTERCEPT) {
+        signal(sig, SIG_DFL);
+    }
     for (auto& port: inputs_) {
         jack_port_disconnect(client_.handle(), port);
         jack_port_unregister(client_.handle(), port);
@@ -162,22 +171,6 @@ void Reactor::signal_finished() {
         finished_fired_ = true;
         finished_.set_value();
     }
-}
-
-int Reactor::process_(jack_nframes_t frame_count, void* arg) {
-    Reactor* reactor = static_cast<Reactor*>(arg);
-    assert(reactor != nullptr);
-    try {
-        reactor->process(frame_count);
-    } catch (...) {
-        if (!reactor->finished_fired_) {
-            reactor->finished_.set_exception(std::current_exception());
-        } else {
-            // Just let the world burn, we are already done here
-            throw;
-        }
-    }
-    return 0;
 }
 
 void Reactor::wait_finished() {
@@ -292,4 +285,32 @@ void Reactor::process(size_t frame_count) {
     }
 }
 
+int Reactor::process_(jack_nframes_t frame_count, void* arg) {
+    Reactor* reactor = static_cast<Reactor*>(arg);
+    assert(reactor != nullptr);
+    try {
+        reactor->process(frame_count);
+    } catch (...) {
+        if (!reactor->finished_fired_) {
+            reactor->finished_.set_exception(std::current_exception());
+        } else {
+            // Just let the world burn, we are already done here
+            throw;
+        }
+    }
+    return 0;
+}
+
+void Reactor::shutdown_(void* arg) {
+    Reactor* reactor = static_cast<Reactor*>(arg);
+    assert(reactor != nullptr);
+    linfo("Reactor::shutdown_(): stopping processing on Jack shutdown\n");
+    reactor->signal_finished();
+}
+
+void Reactor::signal_handler_(int sig) {
+    assert(instance != nullptr);
+    linfo("Reactor::signal_handler_(): stopping on signal %d\n", sig);
+    instance->signal_finished();
+}
 }

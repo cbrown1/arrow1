@@ -1,4 +1,5 @@
 #include "jack_client.hpp"
+#include "log.hpp"
 
 #include <stdexcept>
 #include <cstdio>
@@ -28,6 +29,7 @@ JackClient::JackClient(const string& name):
     // Server is free to change client name to make it unique
     name_ = jack_get_client_name(handle());
     sample_rate_ = jack_get_sample_rate(handle());
+    ldebug("JackClient: engine is using sample rate %ld\n", sample_rate_);
 }
 
 void JackClient::dump_ports() const {

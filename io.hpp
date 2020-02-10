@@ -38,13 +38,13 @@ public:
     // We're joining thread in the destructor, which may throw
     virtual ~IoWorker() noexcept(false);
     
-    // bool done() const { return done_ == needed_; }
     jack_ringbuffer_t* buffer() const { return ring_.get(); }
     size_t frame_size() const { return frame_size_; }
     size_t channel_count() const { return channel_count_; }
     size_t buffer_size() const { return buffer_size_; }
     size_t sample_rate() const { return sample_rate_; }
     size_t frames_needed() const { return needed_; }
+    size_t frames_done() const { return done_; }
 
     void wake();
     void stop();
@@ -65,8 +65,6 @@ public:
         double duration_secs = 0.,
         double start_offset_secs = 0.
     );
-
-
 };
 
 class Writer: public IoWorker {

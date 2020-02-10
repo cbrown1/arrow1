@@ -38,6 +38,9 @@ class Reactor {
     void connect_ports(const vector<string>& input_ports, const vector<string>& output_ports);
 
     static int process_(jack_nframes_t frame_count, void* arg);
+    static void shutdown_(void* arg);
+    static void signal_handler_(int sig);
+
     void process(size_t frame_count);
     void deactivate();
     void activate();
