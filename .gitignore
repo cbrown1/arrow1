@@ -13,3 +13,5 @@
 /.vscode
 # executable built with makefile
 /arrow1
+# Python compilation cache
+**/__pycache__
