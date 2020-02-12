@@ -47,9 +47,7 @@ void IoWorker::join() {
 }
 
 void IoWorker::wake() {
-    std::unique_lock<std::mutex> lock{mx_};
     cv_.notify_one();
-    lock.unlock();
 }
 
 void IoWorker::stop() {
@@ -59,6 +57,27 @@ void IoWorker::stop() {
         wake();
     }
     join();
+}
+
+void IoWorker::pump() {
+    try {
+        std::unique_lock<std::mutex> lock{mx_};
+        while (!break_) {
+            cv_.wait(lock);
+            if (break_) {
+                break;
+            }
+            // No need to hold mutex - jack_ringbuffer is lock-free
+            lock.unlock();
+
+            work_cycle();
+
+            lock.lock();
+        }
+    } catch (...) {
+        lerror("IoWorker::pump(): exception in worker thread, will be rethrown on join()\n");
+        ex_ = std::current_exception();
+    }
 }
 
 IoWorker::~IoWorker() noexcept(false) {
@@ -106,7 +125,7 @@ Reader::Reader(
     needed_ = frames_avail;
 
     // Prefill ringbuffer with as much input file data as possible to minimize underrun probability.
-    refill();
+    work_cycle();
 
     if (!break_) {
         thread_.reset(new std::thread(&Reader::pump, this));
@@ -115,7 +134,7 @@ Reader::Reader(
     }
 }
 
-void Reader::refill() {
+void Reader::work_cycle() {
     size_t writable = jack_ringbuffer_write_space(buffer()) / frame_size_;
     // Don't read past `needed_` frames
     assert(done_ <= needed_);
@@ -131,27 +150,6 @@ void Reader::refill() {
     if (done_ == needed_) {
         ldebug("Reader::refill(): requesting worker stop, we're done after %ld frames\n", done_);
         break_ = true;
-    }
-}
-
-void Reader::pump() {
-    try {
-        std::unique_lock<std::mutex> lock{mx_};
-        while (!break_) {
-            cv_.wait(lock);
-            if (break_) {
-                break;
-            }
-            // No need to hold mutex - jack_ringbuffer is lock-free
-            lock.unlock();
-
-            refill();
-
-            lock.lock();
-        }
-    } catch (...) {
-        lerror("Reader::pump(): exception in worker thread, will be rethrown on join()\n");
-        ex_ = std::current_exception();
     }
 }
 
@@ -178,7 +176,7 @@ Writer::Writer(
     thread_.reset(new std::thread(&Writer::pump, this));
 }
 
-void Writer::drain() {
+void Writer::work_cycle() {
     size_t readable = jack_ringbuffer_read_space(buffer()) / frame_size_;
     if (0 != needed_) {
         assert(done_ <= needed_);
@@ -195,26 +193,6 @@ void Writer::drain() {
     if (0 != needed_ && done_ == needed_) {
         ldebug("Writer::drain(): requesting worker stop, we're done after %ld frames\n", done_);
         break_ = true;
-    }
-}
-
-void Writer::pump() {
-    try {
-        std::unique_lock<std::mutex> lock{mx_};
-        while (!break_) {
-            cv_.wait(lock);
-            if (break_) {
-                break;
-            }
-            lock.unlock();
-
-            drain();
-
-            lock.lock();
-        }
-    } catch (...) {
-        lerror("Writer::pump(): exception in worker thread, will be rethrown on join()\n");
-        ex_ = std::current_exception();
     }
 }
 

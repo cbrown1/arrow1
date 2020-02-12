@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/cbrown1/olinout.svg?branch=master)](https://travis-ci.org/cbrown1/olinout)
+[![Build Status](https://travis-ci.org/cbrown1/arrow1.svg?branch=master)](https://travis-ci.org/cbrown1/arrow1)
 
-# olinout
+# arrow1
 
 Play and record multi-channel audio using jack.
 
@@ -19,7 +19,7 @@ This is the same code as [recapture](https://gist.github.com/jedahu/5028736#file
 ### Download:
 
 ```bash
-git clone https://github.com/cbrown1/olinout.git
+git clone https://github.com/cbrown1/arrow1.git
 ```
 
 ### Compile and install:
@@ -50,7 +50,7 @@ for j in ${outs}; do jack_alias ${j} out${i}; ((i++)); done
 If you don't want to use aliases, go the hard way. List jack port names (your system will have different names):
 
 ```bash
-$ olinout --ports
+$ arrow1 --ports
 8 Output ports:
    1: firewire_pcm:000a35007ca897e1_pbk_analog-1_out
    2: firewire_pcm:000a35007ca897e1_pbk_analog-2_out
@@ -74,29 +74,29 @@ $
 Play a two-channel soundfile, record from channel 2 to a soundfile (no aliases):
 
 ```bash
-$ olinout -o firewire_pcm:000a35007ca897e1_pbk_analog-1_out,firewire_pcm:000a35007ca897e1_pbk_analog-1_out -i firewire_pcm:000a35007ca897e1_cap_analog-2_in --output-file in_1_channel.wav test/2_channels.wav
-olinout: jack sample rate: 44100
-olinout: file to write: in_1_channel.wav
-olinout: writing 1 channels
-olinout: file to read: test/2_channels.wav
-olinout: reading 2 channels
-olinout: connected ports
-olinout: read 122880 of 122880 frames
-olinout: reached end of read file: test/2_channels.wav
+$ arrow1 -o firewire_pcm:000a35007ca897e1_pbk_analog-1_out,firewire_pcm:000a35007ca897e1_pbk_analog-1_out -i firewire_pcm:000a35007ca897e1_cap_analog-2_in --output-file in_1_channel.wav test/2_channels.wav
+arrow1: jack sample rate: 44100
+arrow1: file to write: in_1_channel.wav
+arrow1: writing 1 channels
+arrow1: file to read: test/2_channels.wav
+arrow1: reading 2 channels
+arrow1: connected ports
+arrow1: read 122880 of 122880 frames
+arrow1: reached end of read file: test/2_channels.wav
 $ 
 ```
 The same thing, using aliases created above:
 
 ```bash
-$ olinout --out=out1,out2 --in=in2 --output-file=in_1_channel.wav test/2_channels.wav
-olinout: jack sample rate: 44100
-olinout: file to write: in_1_channel.wav
-olinout: writing 1 channels
-olinout: file to read: test/2_channels.wav
-olinout: reading 2 channels
-olinout: connected ports
-olinout: read 122880 of 122880 frames
-olinout: reached end of read file: test/2_channels.wav
+$ arrow1 --out=out1,out2 --in=in2 --output-file=in_1_channel.wav test/2_channels.wav
+arrow1: jack sample rate: 44100
+arrow1: file to write: in_1_channel.wav
+arrow1: writing 1 channels
+arrow1: file to read: test/2_channels.wav
+arrow1: reading 2 channels
+arrow1: connected ports
+arrow1: read 122880 of 122880 frames
+arrow1: reached end of read file: test/2_channels.wav
 $ 
 ```
 

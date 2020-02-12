@@ -7,6 +7,8 @@
 #include <cstdlib>
 
 namespace olo {
+const vector<string> Args::PORTS_DEFAULT = {"__default"};
+
 namespace po = boost::program_options;
 
 namespace {
@@ -60,7 +62,7 @@ Args handle_cli(int argc, char** argv) {
             "Print version info & exit")
         ("ports,p", po::bool_switch(&args.show_ports), 
             "Print available ports & exit")
-        ("debug,d", po::bool_switch(&args.debug), 
+        ("debug,d", po::bool_switch(&args.debug)->default_value(args.debug), 
             "Allow debugging output")
         ("buffer,b", po::value(&args.buffer_size), 
             "Jack buffer size")

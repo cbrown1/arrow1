@@ -4,6 +4,8 @@
 namespace olo {
 
 struct Args {
+    static const vector<string> PORTS_DEFAULT;
+
     bool show_ports = false;
     bool debug
 #ifdef NDEBUG
@@ -13,8 +15,8 @@ struct Args {
 #endif
     bool show_version = false;
     size_t buffer_size = BUFFER_SIZE_DEFAULT;
-    vector<string> input_ports = {"system:capture_1", "system:capture_2"}; 
-    vector<string> output_ports = {"system:playback_1", "system:playback_2"};
+    vector<string> input_ports = PORTS_DEFAULT; 
+    vector<string> output_ports = PORTS_DEFAULT;
     string input_file;
     string output_file;
     double duration_secs = 0.;
