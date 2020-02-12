@@ -33,6 +33,8 @@ protected:
     std::exception_ptr ex_;
 
     explicit IoWorker(size_t sample_rate, size_t channel_count, size_t buffer_size);
+    virtual void work_cycle() = 0;
+    void pump();
 
 public:
     // We're joining thread in the destructor, which may throw
@@ -53,8 +55,7 @@ public:
 };
 
 class Reader: public IoWorker {
-    void refill();
-    void pump();
+    void work_cycle() override;
 
 public:
     explicit Reader(
@@ -68,8 +69,7 @@ public:
 };
 
 class Writer: public IoWorker {
-    void drain();
-    void pump();
+    void work_cycle() override;
     bool done() const { return needed_ != 0 && done_ == needed_; }
 
 public:
