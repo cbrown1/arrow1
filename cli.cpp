@@ -7,6 +7,8 @@
 #include <cstdlib>
 
 namespace olo {
+const vector<string> Args::PORTS_DEFAULT = {"__default"};
+
 namespace po = boost::program_options;
 
 namespace {

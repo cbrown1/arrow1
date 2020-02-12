@@ -20,6 +20,9 @@ public:
     size_t sample_rate() const { return sample_rate_; }
 
     void dump_ports() const;
+    vector<string> enumerate_ports(int type) const;
+    vector<string> capture_ports() const { return enumerate_ports(JackPortIsPhysical | JackPortIsOutput); }
+    vector<string> playback_ports() const { return enumerate_ports(JackPortIsPhysical | JackPortIsInput); }
 };
 
 }

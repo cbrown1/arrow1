@@ -14,6 +14,18 @@
 namespace olo {
 using std::unique_ptr;
 
+void fixup_default_ports(Args& args, const JackClient& client) {
+    const size_t PORTS_DEFAULT_COUNT = 2;
+    if(args.input_ports == Args::PORTS_DEFAULT) {
+        args.input_ports = client.capture_ports();
+        args.input_ports.resize(std::min(args.input_ports.size(), PORTS_DEFAULT_COUNT));
+    }
+    if(args.output_ports == Args::PORTS_DEFAULT) {
+        args.output_ports = client.playback_ports();
+        args.output_ports.resize(std::min(args.output_ports.size(), PORTS_DEFAULT_COUNT));
+    }
+}
+
 void main(int argc, char** argv) {
     auto args = handle_cli(argc, argv);
     if (args.debug) {
@@ -24,6 +36,7 @@ void main(int argc, char** argv) {
         client.dump_ports();
         return;
     }
+    fixup_default_ports(args, client);
 
     unique_ptr<Reader> reader;
     if (!args.input_file.empty()) {

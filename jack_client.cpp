@@ -6,17 +6,6 @@
 
 namespace olo {
 
-namespace {
-// Length of NULL-terminated array of pointers
-int array_length_(const void** array) {
-    int i = -1;
-    while (array[++i] != NULL);
-    return i;
-}
-// Addresses the casting necessary to silence pointer type mismatch warnings with array_length_()
-#define array_length(arr) array_length_((const void**)arr)
-}
-
 JackClient::JackClient(const string& name):
     client_ {
         jack_client_open(name.c_str(), JackNullOption, NULL),
@@ -32,27 +21,31 @@ JackClient::JackClient(const string& name):
     ldebug("JackClient: engine is using sample rate %ld\n", sample_rate_);
 }
 
+vector<string> JackClient::enumerate_ports(int type) const {
+    const char **ports = jack_get_ports(handle(), NULL, NULL, type);
+    if (ports == nullptr) {
+        throw std::runtime_error("enumerating Jack ports failed");
+    }
+    vector<string> res;
+    for (auto p = ports; *p != nullptr; ++p) {
+        res.push_back(*p);
+    }
+    jack_free(ports);
+    return res;
+}
+
 void JackClient::dump_ports() const {
     using std::printf;
-    const char **ports_in = jack_get_ports(handle(), NULL, NULL, JackPortIsPhysical | JackPortIsInput);
-    int size = array_length(ports_in);
-    int i = 0;
-    printf("%i Output ports:\n", size);
-    while (ports_in[i] != nullptr) {
-        printf("  %2i: %s\n", i + 1, ports_in[i]);
-        i++;
+    auto playback = playback_ports();
+    printf("%ld Output ports:\n", playback.size());
+    for (size_t i = 0; i != playback.size(); ++i) {
+        printf("  %2ld: %s\n", i + 1, playback[i].c_str());
     }
-    jack_free(ports_in);
-    const char **ports_out;
-    ports_out = jack_get_ports(handle(), NULL, NULL, JackPortIsPhysical | JackPortIsOutput);
-    size = array_length(ports_out);
-    i = 0;
-    printf("%i Input ports:\n", size);
-    while (ports_out[i] != NULL) {
-        printf("  %2i: %s\n", i + 1, ports_out[i]);
-        i++;
+    auto capture = capture_ports();
+    printf("%ld Input ports:\n", capture.size());
+    for (size_t i = 0; i != capture.size(); ++i) {
+        printf("  %2ld: %s\n", i + 1, capture[i].c_str());
     }
-    jack_free(ports_out);
 }
 
 }
