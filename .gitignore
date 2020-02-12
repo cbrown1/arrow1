@@ -15,3 +15,5 @@
 /arrow1
 # Python compilation cache
 **/__pycache__
+# setup.py artifacts
+/dist
