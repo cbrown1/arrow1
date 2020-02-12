@@ -42,3 +42,4 @@ target_link_libraries(arrow1
         Boost::program_options
     )
 
+install(TARGETS arrow1 DESTINATION bin)
