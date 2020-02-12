@@ -59,9 +59,13 @@ void Reactor::register_ports(const vector<string>& input_ports, const vector<str
         output_names_.reserve(output_ports.size());
         for (size_t i = 0; i != output_ports.size(); ++i) {
             auto short_name = str(format("output_%1%") % i);
-            auto port = create_port(client_, short_name, JackPortIsOutput);
             output_names_.push_back(string{client_.name()} + ":" + short_name);
-            outputs_.push_back(port.release());
+            if (NULL_OUTPUT != output_ports[i]) {
+                auto port = create_port(client_, short_name, JackPortIsOutput);
+                outputs_.push_back(port.release());
+            } else {
+                outputs_.push_back(nullptr);
+            }
         }
         output_buffers_.resize(output_ports.size());
     }
@@ -79,6 +83,10 @@ void Reactor::connect_ports(const vector<string>& input_ports, const vector<stri
     }
     if (reader_ != nullptr) {
         for (size_t i = 0; i != output_ports.size(); ++i) {
+            if (!outputs_[i]) {
+                // This is NULL_OUTPUT, leave disconnected
+                continue;
+            }
             int err = jack_connect(client_.handle(), output_names_[i].c_str(), output_ports[i].c_str());
             if (0 != err) {
                 throw runtime_error{str(format("failed connecting port %1% to %2% with Jack error %3%")
@@ -158,6 +166,9 @@ Reactor::~Reactor() {
         jack_port_unregister(client_.handle(), port);
     }
     for (auto& port: outputs_) {
+        if (!port) {
+            continue;
+        }
         jack_port_disconnect(client_.handle(), port);
         jack_port_unregister(client_.handle(), port);
     }
@@ -185,6 +196,9 @@ void Reactor::playback(size_t frame_count) {
     size_t n, c;
     // Update buffer pointers
     for (size_t c = 0; c != channels; ++c) {
+        if (!outputs_[c]) {
+            continue;
+        }
         output_buffers_[c] = static_cast<Sample*>(jack_port_get_buffer(outputs_[c], frame_count));
         if (output_buffers_[c] == nullptr) {
             throw runtime_error{str(format("unable to obtain playback buffer for port %1%") 
@@ -195,9 +209,11 @@ void Reactor::playback(size_t frame_count) {
     for (n = 0; n != frame_count; ++n) {
         bool break_outer = false;
         for (c = 0; c != channels; ++c) {
+            Sample discard;
+            Sample* buff = outputs_[c] ? &output_buffers_[c][n] : &discard;
             size_t read = jack_ringbuffer_read(
                 reader_->buffer(), 
-                reinterpret_cast<char*>(&output_buffers_[c][n]),
+                reinterpret_cast<char*>(buff),
                 sizeof(Sample)
             );
             if (read != sizeof(Sample)) {
@@ -220,6 +236,9 @@ void Reactor::playback(size_t frame_count) {
     // Mute the remaining samples in case of underrun or stream end
     if (n != frame_count) {
         for (c = 0; c != channels; ++c) {
+            if (!outputs_[c]) {
+                continue;
+            }
             std::memset(&output_buffers_[c][n], 0, sizeof(Sample) * (frame_count - n));
         }
     }
