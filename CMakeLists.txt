@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(olinout 
+project(arrow1 
     VERSION 1.0
     DESCRIPTION "Play and record multi-channel audio using jack."
-    HOMEPAGE_URL "https://github.com/cbrown1/olinout"
+    HOMEPAGE_URL "https://github.com/cbrown1/arrow1"
     LANGUAGES CXX
 )
 
@@ -24,7 +24,7 @@ find_package(Boost COMPONENTS program_options REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(olinout
+add_executable(arrow1
     cli.cpp 
     io.cpp
     jack_client.cpp
@@ -33,7 +33,7 @@ add_executable(olinout
     reactor.cpp
 )
 
-target_link_libraries(olinout
+target_link_libraries(arrow1
     PRIVATE
         ${SNDFILE_LIBS}
         ${JACK_LIBS}
