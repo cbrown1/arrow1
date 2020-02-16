@@ -24,7 +24,7 @@ JackClient::JackClient(const string& name):
 vector<string> JackClient::enumerate_ports(int type) const {
     const char **ports = jack_get_ports(handle(), NULL, NULL, type);
     if (ports == nullptr) {
-        throw std::runtime_error("enumerating Jack ports failed");
+        throw std::runtime_error("enumerating Jack channels failed");
     }
     vector<string> res;
     for (auto p = ports; *p != nullptr; ++p) {
@@ -37,12 +37,12 @@ vector<string> JackClient::enumerate_ports(int type) const {
 void JackClient::dump_ports() const {
     using std::printf;
     auto playback = playback_ports();
-    printf("%ld Output ports:\n", playback.size());
+    printf("%ld Output (playback) channels:\n", playback.size());
     for (size_t i = 0; i != playback.size(); ++i) {
         printf("  %2ld: %s\n", i + 1, playback[i].c_str());
     }
     auto capture = capture_ports();
-    printf("%ld Input ports:\n", capture.size());
+    printf("%ld Input (record) channels:\n", capture.size());
     for (size_t i = 0; i != capture.size(); ++i) {
         printf("  %2ld: %s\n", i + 1, capture[i].c_str());
     }

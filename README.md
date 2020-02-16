@@ -25,13 +25,15 @@ git clone https://github.com/cbrown1/arrow1.git
 ### Compile and install:
 
 ```bash
+cd arrow1
 make && sudo make install
 ```
 
 Or with CMake, which gives more control over the process:
 
 ```bash
-mkdir build && cd build && cmake ... && make
+cd arrow1
+mkdir build && cd build && cmake ../src && make
 ```
 
 ## Usage
@@ -50,63 +52,58 @@ for j in ${outs}; do jack_alias ${j} out${i}; ((i++)); done
 If you don't want to use aliases, go the hard way. List jack port names (your system will have different names):
 
 ```bash
-$ arrow1 --ports
-8 Output ports:
-   1: firewire_pcm:000a35007ca897e1_pbk_analog-1_out
-   2: firewire_pcm:000a35007ca897e1_pbk_analog-2_out
-   3: firewire_pcm:000a35007ca897e1_pbk_analog-3_out
-   4: firewire_pcm:000a35007ca897e1_pbk_analog-4_out
-   5: firewire_pcm:000a35007ca897e1_pbk_analog-5_out
-   6: firewire_pcm:000a35007ca897e1_pbk_analog-6_out
-   7: firewire_pcm:000a35007ca897e1_pbk_analog-7_out
-   8: firewire_pcm:000a35007ca897e1_pbk_analog-8_out
-8 Input ports:
-   1: firewire_pcm:000a35007ca897e1_cap_analog-1_in
-   2: firewire_pcm:000a35007ca897e1_cap_analog-2_in
-   3: firewire_pcm:000a35007ca897e1_cap_analog-3_in
-   4: firewire_pcm:000a35007ca897e1_cap_analog-4_in
-   5: firewire_pcm:000a35007ca897e1_cap_analog-5_in
-   6: firewire_pcm:000a35007ca897e1_cap_analog-6_in
-   7: firewire_pcm:000a35007ca897e1_cap_analog-7_in
-   8: firewire_pcm:000a35007ca897e1_cap_analog-8_in
+$ arrow1 -c
+2 Output (playback) channels:
+   1: system:playback_1
+   2: system:playback_2
+2 Input (record) channels:
+   1: system:capture_1
+   2: system:capture_2
 $ 
 ```
-Play a two-channel soundfile, record from channel 2 to a soundfile (no aliases):
+Play a two-channel soundfile and record for 5.2s from channel 2 and write to a soundfile:
 
 ```bash
-$ arrow1 -o firewire_pcm:000a35007ca897e1_pbk_analog-1_out,firewire_pcm:000a35007ca897e1_pbk_analog-1_out -i firewire_pcm:000a35007ca897e1_cap_analog-2_in --output-file in_1_channel.wav test/2_channels.wav
-arrow1: jack sample rate: 44100
-arrow1: file to write: in_1_channel.wav
-arrow1: writing 1 channels
-arrow1: file to read: test/2_channels.wav
-arrow1: reading 2 channels
-arrow1: connected ports
-arrow1: read 122880 of 122880 frames
-arrow1: reached end of read file: test/2_channels.wav
-$ 
+$ arrow1 -p test/2_channels.wav -o system:playback_1,system:playback_2 -r test.wav -i system:capture_2 -D 5.2
+frames read: 132300 (3.004s)
+frames written: 229320 (5.204s)
+$
 ```
 The same thing, using aliases created above:
 
 ```bash
-$ arrow1 --out=out1,out2 --in=in2 --output-file=in_1_channel.wav test/2_channels.wav
-arrow1: jack sample rate: 44100
-arrow1: file to write: in_1_channel.wav
-arrow1: writing 1 channels
-arrow1: file to read: test/2_channels.wav
-arrow1: reading 2 channels
-arrow1: connected ports
-arrow1: read 122880 of 122880 frames
-arrow1: reached end of read file: test/2_channels.wav
+$ arrow1 -p test/2_channels.wav -o in1,in2 -r test.wav -i out2 -D 5.2
+frames read: 132300 (3.004s)
+frames written: 229320 (5.204s)
 $ 
 ```
 
+Play channels 2 & 4 of a 6-channel file:
+
+```bash
+$ arrow1 -p test/6_channels.wav -o null,system:playback_1,null,system:playback_2,null,null
+frames read: 132300 (3.004s)
+double free or corruption (out)
+Aborted
+```
+
+
+## TODO
+
+- Default playback channel map; soundfile_ch1 -> jack_output_ch1, etc.
+
+- Indefinite record; user specifies --duration 0, which means hit a key to stop
+
+- Proper Python wrapper (no temp files, etc)
+
+
 ## Authors
 
-- **Jeremy Hughes** - [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md)
-
-- **Christopher Brown**
+- [**Christopher Brown**](https://github.com/cbrown1)
 
 - [**Andrzej Ciarkowski**](https://github.com/andrzejc)
+
+- **Jeremy Hughes** - [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md)
 
 ## License
 

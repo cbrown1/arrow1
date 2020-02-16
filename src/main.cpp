@@ -73,11 +73,11 @@ void main(int argc, char** argv) {
 
     if (reader) {
         reader->stop();
-        std::cout << "frames read: " << reader->frames_done() << "\n";
+        std::cout << "frames read: " << reader->frames_done(); // << " (" << printf("%.2f", (float)reader->frames_done() / (float)reader->sample_rate()) << "s)\n";
     }
     if (writer) {
         writer->stop();
-        std::cout << "frames written: " << writer->frames_done() << "\n";
+        std::cout << "frames written: " << writer->frames_done(); // << " (" << printf("%.2f", (float)writer->frames_done() / (float)writer->sample_rate()) << "s)\n";
     }
 }
 }
