@@ -12,18 +12,18 @@ with subprocess.Popen(['arrow1', '--version'], stdout=subprocess.PIPE, universal
 def play_rec(play=None, rec=None, input_ports=None, output_ports=None, duration_secs=None, start_offset_secs=None, fs=None):
     """Frontend to arrow1 - play and record multi-channel sound using Jack
 
-    :param play: if None - perform only recording; if numpy array - data for playback; 
-    otherwise assume it's a path of audio file to play or file-like object. 
-    :param rec: if True - record audio and return as numpy array; if evaluates to 
-    False - perform only playback; otherwise assume it's a name of wav file to 
+    :param play: if None - perform only recording; if numpy array - data for playback;
+    otherwise assume it's a path of audio file to play or file-like object.
+    :param rec: if True - record audio and return as numpy array; if evaluates to
+    False - perform only playback; otherwise assume it's a name of wav file to
     record or file-like object.
     :param input_ports: names of Jack capture ports; if not set use arrow1 defaults
     (stereo with 2 first ports).
     :param output_ports: names of Jack playback ports; if not set use arrow1 defaults.
     :param duration_secs: max duration of record/playback in seconds.
     :param start_offset_secs: start playback of play at this offset.
-    :param fs: required if play is numpy array (must match Jack engine sample rate), 
-    otherwise ignored. 
+    :param fs: required if play is numpy array (must match Jack engine sample rate),
+    otherwise ignored.
     :returns: if rec is True the recorded audio as numpy array, otherwise None.
     """
     play_cleanup = False
@@ -44,9 +44,9 @@ def play_rec(play=None, rec=None, input_ports=None, output_ports=None, duration_
     if output_ports:
         args.append('--out={}'.format(','.join(output_ports)))
     if play:
-        args.append('--input-file={}'.format(play))
+        args.append('--play-file={}'.format(play))
     if rec:
-        args.append('--output-file={}'.format(rec))
+        args.append('--record-file={}'.format(rec))
     if duration_secs is not None:
         args.append('--duration={}'.format(duration_secs))
     if start_offset_secs is not None:
@@ -65,6 +65,6 @@ def play_rec(play=None, rec=None, input_ports=None, output_ports=None, duration_
         return arr, fs
 
 def get_ports():
-    with subprocess.Popen(['arrow1', '--ports'], stdout=subprocess.PIPE, universal_newlines=True) as p:
+    with subprocess.Popen(['arrow1', '--channels'], stdout=subprocess.PIPE, universal_newlines=True) as p:
         std_out, _ = p.communicate()
         return std_out

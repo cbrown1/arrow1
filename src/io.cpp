@@ -28,7 +28,6 @@ IoWorker::IoWorker(size_t sample_rate, size_t channel_count, size_t buffer_size)
         throw runtime_error{str(format("reader unable to allocate ring buffer of %1% bytes")
             % (buffer_size_ * frame_size_))};
     }
-    std::memset(ring_->buf, 0, buffer_size_ * frame_size_);
 }
 
 void IoWorker::join() {
@@ -85,9 +84,9 @@ IoWorker::~IoWorker() noexcept(false) {
 }
 
 Reader::Reader(
-    const string& path, 
-    size_t sample_rate, 
-    size_t channel_count, 
+    const string& path,
+    size_t sample_rate,
+    size_t channel_count,
     size_t buffer_size,
     double duration_secs,
     double start_offset_secs
@@ -100,14 +99,14 @@ Reader::Reader(
         throw runtime_error{str(format("reader can't open file %1%") % path)};
     }
     if (si.samplerate != sample_rate_) {
-        throw runtime_error{str(format("input file sample rate: %1%; engine sample rate: %2%") 
+        throw runtime_error{str(format("input file sample rate: %1%; engine sample rate: %2%")
             % si.samplerate % sample_rate_)};
     }
     if (si.channels != channel_count_) {
         throw runtime_error{str(format("input file channels: %1%; engine channels: %2%")
             % si.channels % channel_count_)};
     }
-    ldebug("Reader: reading from %s with %ld sample rate and %ld channels\n", 
+    ldebug("Reader: reading from %s with %ld sample rate and %ld channels\n",
         path.c_str(), sample_rate_, channel_count_);
     sf_count_t frames_avail = si.frames;
     sf_count_t start_frame = start_offset_secs * sample_rate_ + .5;
@@ -138,6 +137,10 @@ void Reader::work_cycle() {
     size_t writable = jack_ringbuffer_write_space(buffer()) / frame_size_;
     // Don't read past `needed_` frames
     assert(done_ <= needed_);
+    // Limit the size because jack_rigbuffer_create may allocate buffer larger
+    // than buffer_size_ (rounding upwards to powers of 2) and reports the real
+    // allocated space here, leading to buffer overflow of buff_
+    writable = std::min(writable, buffer_size_);
     writable = std::min(needed_ - done_, writable);
     auto read = sf_readf_float(sf_.get(), buff_.get(), writable);
     if (read != writable) {
@@ -154,9 +157,9 @@ void Reader::work_cycle() {
 }
 
 Writer::Writer(
-    const string& path, 
-    size_t sample_rate, 
-    size_t channel_count, 
+    const string& path,
+    size_t sample_rate,
+    size_t channel_count,
     size_t buffer_size,
     double duration_secs
 ):
@@ -170,7 +173,7 @@ Writer::Writer(
     if (!sf_) {
         throw runtime_error{str(format("writer can't open file %1%") % path)};
     }
-    ldebug("Writer: writing to %s with %ld sample rate and %ld channels\n", 
+    ldebug("Writer: writing to %s with %ld sample rate and %ld channels\n",
         path.c_str(), sample_rate_, channel_count_);
     needed_ = duration_secs * sample_rate_ + .5;
     thread_.reset(new std::thread(&Writer::pump, this));
@@ -178,6 +181,10 @@ Writer::Writer(
 
 void Writer::work_cycle() {
     size_t readable = jack_ringbuffer_read_space(buffer()) / frame_size_;
+    // Limit the size because jack_rigbuffer_create may allocate buffer larger
+    // than buffer_size_ (rounding upwards to powers of 2) and reports the real
+    // allocated space here, leading to buffer overflow of buff_
+    readable = std::min(readable, buffer_size_);
     if (0 != needed_) {
         assert(done_ <= needed_);
         readable = std::min(readable, needed_ - done_);
