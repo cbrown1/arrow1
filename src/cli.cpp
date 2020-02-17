@@ -77,7 +77,7 @@ Args handle_cli(int argc, char** argv) {
         ("record-file,r", po::value(&args.output_file), "File path to write recorded audio to, in wav format")
     ;
     po::positional_options_description pos;
-    pos.add("record-file", 1).add("play-file", 1);
+    pos.add("play-file", 1).add("record-file", 1);
 
     po::variables_map vm;
     try {
