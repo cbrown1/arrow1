@@ -1,14 +1,11 @@
-cmake_minimum_required(VERSION 3.1)
 
-project(arrow1 
-    VERSION 1.0
-    DESCRIPTION "Play and record multi-channel audio using jack."
-    HOMEPAGE_URL "https://github.com/cbrown1/arrow1"
-    LANGUAGES CXX
-)
+option(ENABLE_SANITIZERS "Enable use of AddressSanitizer and Undefined Behavior Sanitizer?" OFF)
+if(ENABLE_SANITIZERS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer -fsanitize-recover=address,undefined")
+endif()
 
 find_library(SNDFILE_LIBS sndfile)
-if(NOT SNDFILE_LIBS) 
+if(NOT SNDFILE_LIBS)
     message(FATAL_ERROR "libsndfile not found")
 endif()
 
@@ -25,12 +22,17 @@ find_package(Boost COMPONENTS program_options REQUIRED)
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(arrow1
-    cli.cpp 
+    cli.cpp
+    cli.hpp
     io.cpp
+    io.hpp
     jack_client.cpp
+    jack_client.hpp
     log.cpp
+    log.hpp
     main.cpp
     reactor.cpp
+    reactor.hpp
 )
 
 target_link_libraries(arrow1
