@@ -62,8 +62,8 @@ void main(int argc, char** argv) {
     }
 
     Reactor reactor {
-        client, 
-        args.input_ports, 
+        client,
+        args.input_ports,
         args.output_ports,
         reader.get(),
         writer.get(),

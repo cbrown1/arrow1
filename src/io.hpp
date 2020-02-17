@@ -39,7 +39,7 @@ protected:
 public:
     // We're joining thread in the destructor, which may throw
     virtual ~IoWorker() noexcept(false);
-    
+
     jack_ringbuffer_t* buffer() const { return ring_.get(); }
     size_t frame_size() const { return frame_size_; }
     size_t channel_count() const { return channel_count_; }
@@ -59,7 +59,7 @@ class Reader: public IoWorker {
 
 public:
     explicit Reader(
-        const string& path, 
+        const string& path,
         size_t sample_rate,
         size_t channel_count,
         size_t buffer_size,
