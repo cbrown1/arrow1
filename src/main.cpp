@@ -10,20 +10,24 @@
 #include <memory>
 #include <exception>
 #include <iostream>
+#include <iomanip>
 
 namespace olo {
 using std::unique_ptr;
 
-void fixup_default_ports(Args& args, const JackClient& client) {
-    const size_t PORTS_DEFAULT_COUNT = 2;
+namespace {
+void fixup_default_ports(Args& args, const JackClient& client, const string& input_file) {
     if(args.input_ports == Args::PORTS_DEFAULT) {
         args.input_ports = client.capture_ports();
-        args.input_ports.resize(std::min(args.input_ports.size(), PORTS_DEFAULT_COUNT));
     }
     if(args.output_ports == Args::PORTS_DEFAULT) {
         args.output_ports = client.playback_ports();
-        args.output_ports.resize(std::min(args.output_ports.size(), PORTS_DEFAULT_COUNT));
+        if (!input_file.empty()) {
+            auto channels = query_audio_file_channels(input_file);
+            args.output_ports.resize(std::min(args.output_ports.size(), channels));
+        }
     }
+}
 }
 
 void main(int argc, char** argv) {
@@ -36,7 +40,8 @@ void main(int argc, char** argv) {
         client.dump_ports();
         return;
     }
-    fixup_default_ports(args, client);
+
+    fixup_default_ports(args, client, args.input_file);
 
     unique_ptr<Reader> reader;
     if (!args.input_file.empty()) {

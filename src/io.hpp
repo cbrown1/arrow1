@@ -82,4 +82,5 @@ public:
     );
 };
 
+size_t query_audio_file_channels(const string& path);
 }

@@ -10,7 +10,7 @@ JackClient::JackClient(const string& name):
     client_ {
         jack_client_open(name.c_str(), JackNullOption, NULL),
         jack_client_close
-    } 
+    }
 {
     if (!client_) {
         throw std::runtime_error("unable to create Jack client, is server running?");
@@ -22,7 +22,7 @@ JackClient::JackClient(const string& name):
 }
 
 vector<string> JackClient::enumerate_ports(int type) const {
-    const char **ports = jack_get_ports(handle(), NULL, NULL, type);
+    const char **ports = jack_get_ports(handle(), NULL, JACK_DEFAULT_AUDIO_TYPE, type);
     if (ports == nullptr) {
         throw std::runtime_error("enumerating Jack channels failed");
     }
