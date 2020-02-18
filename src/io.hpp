@@ -18,12 +18,12 @@ protected:
     size_t frame_size_;
     // Ringbuffer size in frames.
     size_t buffer_size_;
-    std::unique_ptr<jack_ringbuffer_t, typeof(&jack_ringbuffer_free)> ring_;
+    std::unique_ptr<jack_ringbuffer_t, decltype(&jack_ringbuffer_free)> ring_;
     std::unique_ptr<Sample[]> buff_;
     std::unique_ptr<std::thread> thread_;
     std::mutex mx_;
     std::condition_variable cv_;
-    std::unique_ptr<SNDFILE, typeof(&sf_close)> sf_;
+    std::unique_ptr<SNDFILE, decltype(&sf_close)> sf_;
     // Read/write at most needed_ frames.
     size_t needed_ = 0;
     // Stores number of frames read/written so far.

@@ -1,9 +1,19 @@
 #pragma once
+#ifdef _MSC_VER
+# define NOMINMAX
+// HACK: prevent Jack headers to redefine stdint types on windows causing build to fail
+# include <stdint.h>
+# ifndef _STDINT_H
+#  define _STDINT_H
+# endif
+#endif
+
 #include <jack/jack.h>
 #include <boost/optional.hpp>
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 namespace olo {
 

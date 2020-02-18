@@ -36,7 +36,7 @@ void fixup_default_ports(Args& args, const JackClient& client) {
 void main(int argc, char** argv) {
     auto args = handle_cli(argc, argv);
     if (args.debug) {
-        set_loglevel(DEBUG);
+        set_loglevel(LDEBUG);
     }
     JackClient client(JACK_CLIENT_NAME);
     if (args.show_ports) {

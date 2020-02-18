@@ -6,7 +6,7 @@
 namespace olo {
 
 namespace {
-LogLevel log_level = INFO;
+LogLevel log_level = LINFO;
 }
 
 void set_loglevel(LogLevel l) {

@@ -14,7 +14,7 @@ using boost::format;
 
 namespace {
 auto open_sndfile(const string& path, int mode, SF_INFO& si) {
-    std::unique_ptr<SNDFILE, typeof(&sf_close)> sf {
+    std::unique_ptr<SNDFILE, decltype(&sf_close)> sf {
         sf_open(path.c_str(), mode, &si),
         sf_close
     };
@@ -116,7 +116,7 @@ Reader::Reader(
         throw runtime_error{str(format("input file channels: %1%; engine channels: %2%")
             % si.channels % channel_count_)};
     }
-    ldebug("Reader: reading from %s with %ld sample rate and %ld channels\n",
+    ldebug("Reader: reading from %s with %zd sample rate and %zd channels\n",
         path.c_str(), sample_rate_, channel_count_);
     sf_count_t frames_avail = si.frames;
     sf_count_t start_frame = start_offset_secs * sample_rate_ + .5;
@@ -129,7 +129,7 @@ Reader::Reader(
     if (duration_secs != 0) {
         sf_count_t duration_frames = duration_secs * sample_rate_ + .5;
         frames_avail = std::min(frames_avail, duration_frames);
-        ldebug("Reader::Reader(): limiting duration to %ld frames\n", frames_avail);
+        ldebug("Reader::Reader(): limiting duration to %zd frames\n", frames_avail);
     }
     needed_ = frames_avail;
 
@@ -161,7 +161,7 @@ void Reader::work_cycle() {
     assert(written == read * frame_size_);  // As we are the only producer
     done_ += read;
     if (done_ == needed_) {
-        ldebug("Reader::refill(): requesting worker stop, we're done after %ld frames\n", done_);
+        ldebug("Reader::refill(): requesting worker stop, we're done after %zd frames\n", done_);
         break_ = true;
     }
 }
@@ -180,7 +180,7 @@ Writer::Writer(
     si.samplerate = sample_rate_;
     si.format = SF_FORMAT_WAV | SF_FORMAT_PCM_32;
     sf_ = open_sndfile(path, SFM_WRITE, si);
-    ldebug("Writer: writing to %s with %ld sample rate and %ld channels\n",
+    ldebug("Writer: writing to %s with %zd sample rate and %zd channels\n",
         path.c_str(), sample_rate_, channel_count_);
     needed_ = duration_secs * sample_rate_ + .5;
     thread_.reset(new std::thread(&Writer::pump, this));
@@ -205,7 +205,7 @@ void Writer::work_cycle() {
     }
     done_ += written;
     if (0 != needed_ && done_ == needed_) {
-        ldebug("Writer::drain(): requesting worker stop, we're done after %ld frames\n", done_);
+        ldebug("Writer::drain(): requesting worker stop, we're done after %zd frames\n", done_);
         break_ = true;
     }
 }

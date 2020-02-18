@@ -18,7 +18,7 @@ JackClient::JackClient(const string& name):
     // Server is free to change client name to make it unique
     name_ = jack_get_client_name(handle());
     sample_rate_ = jack_get_sample_rate(handle());
-    ldebug("JackClient: engine is using sample rate %ld\n", sample_rate_);
+    ldebug("JackClient: engine is using sample rate %zd\n", sample_rate_);
 }
 
 vector<string> JackClient::enumerate_ports(int type) const {
@@ -37,14 +37,14 @@ vector<string> JackClient::enumerate_ports(int type) const {
 void JackClient::dump_ports() const {
     using std::printf;
     auto playback = playback_ports();
-    printf("%ld Output (playback) channels:\n", playback.size());
+    printf("%zd Output (playback) channels:\n", playback.size());
     for (size_t i = 0; i != playback.size(); ++i) {
-        printf("  %2ld: %s\n", i + 1, playback[i].c_str());
+        printf("  %2zd: %s\n", i + 1, playback[i].c_str());
     }
     auto capture = capture_ports();
-    printf("%ld Input (record) channels:\n", capture.size());
+    printf("%zd Input (record) channels:\n", capture.size());
     for (size_t i = 0; i != capture.size(); ++i) {
-        printf("  %2ld: %s\n", i + 1, capture[i].c_str());
+        printf("  %2zd: %s\n", i + 1, capture[i].c_str());
     }
 }
 
