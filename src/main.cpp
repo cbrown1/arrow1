@@ -53,7 +53,7 @@ void main(int argc, char** argv) {
             client.sample_rate(),
             args.output_ports.size(),
             args.buffer_size,
-            args.duration_secs,
+            args.duration_secs.value_or(0),
             args.start_offset_secs
         });
     }
@@ -65,7 +65,7 @@ void main(int argc, char** argv) {
             client.sample_rate(),
             args.input_ports.size(),
             args.buffer_size,
-            args.duration_secs
+            args.duration_secs.value_or(0)
         });
     }
 
@@ -75,6 +75,7 @@ void main(int argc, char** argv) {
         args.output_ports,
         reader.get(),
         writer.get(),
+        args.duration_secs && 0 == *args.duration_secs
     };
 
     reactor.wait_finished();

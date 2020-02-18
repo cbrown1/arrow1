@@ -120,17 +120,26 @@ Reactor::Reactor(
     const vector<string>& input_ports,
     const vector<string>& output_ports,
     Reader* reader,
-    Writer* writer
+    Writer* writer,
+    bool duration_infinite
 ):
     client_{client},
     reader_{reader},
     writer_{writer},
     needed_{
-        std::max(
-            reader ? reader->frames_needed() : 0,
-            writer ? writer->frames_needed() : 0
-        )}
+        duration_infinite
+            ? 0
+            : std::max(
+                reader ? reader->frames_needed() : 0,
+                writer ? writer->frames_needed() : 0
+            )
+    }
 {
+    if (needed_ != 0) {
+        ldebug("Reactor::Reactor(): processing at most %ld frames\n", needed_);
+    } else {
+        ldebug("Reactor::Reactor(): processing until explicitly terminated\n");
+    }
     if (instance != nullptr) {
         throw runtime_error{"reactor instance is already present"};
     } else {
@@ -298,7 +307,7 @@ void Reactor::process(size_t frame_count) {
     }
 
     done_ += frame_count;
-    if (done_ >= needed_) {
+    if (needed_ != 0 && done_ >= needed_) {
         ldebug("Reactor::process(): signalling done to control thread after %ld frames\n", done_);
         signal_finished();
     }

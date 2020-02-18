@@ -15,7 +15,7 @@ struct Args {
     vector<string> output_ports = PORTS_DEFAULT;
     string input_file;
     string output_file;
-    double duration_secs = 0.;
+    optional<double> duration_secs;
     double start_offset_secs = 0.;
 };
 

@@ -32,16 +32,20 @@ bool validate(const po::variables_map& vm, Args& args) {
         "\nNo playback or record file specified. Nothing to do!\n";
         return false;
     }
-    if (!args.output_file.empty() && args.input_file.empty() && args.duration_secs == 0) {
+    if (!args.output_file.empty() && args.input_file.empty() && !args.duration_secs) {
         std::cerr << "Recording requires a playback file name and/or a duration to be specified\n";
-        return false;
-    }
-    if (vm.count("duration") && args.duration_secs == 0) {
-        std::cerr << "Record duration can't be 0\n";
         return false;
     }
     if (args.input_channel_count && vm.count("in") != 0) {
         std::cerr << "Options --input-channel-count and --in cannot be set at the same time\n";
+        return false;
+    }
+    if (args.duration_secs && *args.duration_secs < 0) {
+        std::cerr << "Duration must not be negative\n";
+        return false;
+    }
+    if (args.start_offset_secs < 0) {
+        std::cerr << "Start offset must not be negative\n";
         return false;
     }
     // For compatibility with comma-separated input
@@ -72,7 +76,7 @@ Args handle_cli(int argc, char** argv) {
         ("out,o", po::value(&args.output_ports),
             "Jack output (playback) channels, specified using a comma-separated list; first item specifies soundfile ch 1, etc")
         ("duration,D", po::value(&args.duration_secs),
-            "Duration of playback and recording in s; if not set, will be equal to the length of playback file")
+            "Duration of playback and recording in s; if not set, will be equal to the length of playback file; if 0 - record until terminated with ^C")
         ("start,s", po::value(&args.start_offset_secs),
             "Offset to start at when reading audio file, in s")
         ("play-file,p", po::value(&args.input_file), "File path to read playback audio from, in any format supported by libsndfile")

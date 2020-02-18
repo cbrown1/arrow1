@@ -20,7 +20,6 @@ const string NULL_OUTPUT = "null";
 const string ABOUT = JACK_CLIENT_NAME + " v" + VERSION + ": Play and record multi-channel audio using jack\n"
         "Copyright (C) 2020  Christopher Brown <cbrown1@pitt.edu>\n"
 		"Distributed under the terms of the GNU GPL, v3 or later\n";
-const size_t INPUT_CHANNEL_COUNT_NOT_SET = static_cast<size_t>(-1);
 
 class Reader;
 class Writer;
