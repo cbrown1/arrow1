@@ -78,7 +78,7 @@ void Reactor::connect_ports(const vector<string>& input_ports, const vector<stri
             if (0 != err) {
                 throw runtime_error{str(format("failed connecting port %1% to %2% with Jack error %3%")
                     % input_ports[i] % input_names_[i] % err)};
-            } 
+            }
         }
     }
     if (reader_ != nullptr) {
@@ -91,7 +91,7 @@ void Reactor::connect_ports(const vector<string>& input_ports, const vector<stri
             if (0 != err) {
                 throw runtime_error{str(format("failed connecting port %1% to %2% with Jack error %3%")
                     % output_names_[i] % output_ports[i] % err)};
-            } 
+            }
         }
     }
 }
@@ -110,27 +110,36 @@ void Reactor::activate() {
 void Reactor::deactivate() {
     if (activated_) {
         jack_deactivate(client_.handle());
-        ldebug("Reactor::deactivat(): Jack client deactivated\n");
-        activated_ = false;        
+        ldebug("Reactor::deactivate(): Jack client deactivated\n");
+        activated_ = false;
     }
 }
 
 Reactor::Reactor(
     JackClient& client,
-    const vector<string>& input_ports, 
+    const vector<string>& input_ports,
     const vector<string>& output_ports,
     Reader* reader,
-    Writer* writer
+    Writer* writer,
+    bool duration_infinite
 ):
     client_{client},
     reader_{reader},
     writer_{writer},
     needed_{
-        std::max(
-            reader ? reader->frames_needed() : 0, 
-            writer ? writer->frames_needed() : 0
-        )}
+        duration_infinite
+            ? 0
+            : std::max(
+                reader ? reader->frames_needed() : 0,
+                writer ? writer->frames_needed() : 0
+            )
+    }
 {
+    if (needed_ != 0) {
+        ldebug("Reactor::Reactor(): processing at most %ld frames\n", needed_);
+    } else {
+        ldebug("Reactor::Reactor(): processing until explicitly terminated\n");
+    }
     if (instance != nullptr) {
         throw runtime_error{"reactor instance is already present"};
     } else {
@@ -201,7 +210,7 @@ void Reactor::playback(size_t frame_count) {
         }
         output_buffers_[c] = static_cast<Sample*>(jack_port_get_buffer(outputs_[c], frame_count));
         if (output_buffers_[c] == nullptr) {
-            throw runtime_error{str(format("unable to obtain playback buffer for port %1%") 
+            throw runtime_error{str(format("unable to obtain playback buffer for port %1%")
                 % output_names_[c])};
         }
     }
@@ -212,7 +221,7 @@ void Reactor::playback(size_t frame_count) {
             Sample discard;
             Sample* buff = outputs_[c] ? &output_buffers_[c][n] : &discard;
             size_t read = jack_ringbuffer_read(
-                reader_->buffer(), 
+                reader_->buffer(),
                 reinterpret_cast<char*>(buff),
                 sizeof(Sample)
             );
@@ -256,7 +265,7 @@ void Reactor::capture(size_t frame_count) {
     for (size_t c = 0; c != channels; ++c) {
         input_buffers_[c] = static_cast<const Sample*>(jack_port_get_buffer(inputs_[c], frame_count));
         if (input_buffers_[c] == nullptr) {
-            throw runtime_error{str(format("unable to obtain capture buffer for port %1%") 
+            throw runtime_error{str(format("unable to obtain capture buffer for port %1%")
                 % input_buffers_[c])};
         }
     }
@@ -265,7 +274,7 @@ void Reactor::capture(size_t frame_count) {
         bool break_outer = false;
         for (c = 0; c != channels; ++c) {
             size_t written = jack_ringbuffer_write(
-                writer_->buffer(), 
+                writer_->buffer(),
                 reinterpret_cast<const char*>(&input_buffers_[c][n]),
                 sizeof(Sample)
             );
@@ -298,7 +307,7 @@ void Reactor::process(size_t frame_count) {
     }
 
     done_ += frame_count;
-    if (done_ >= needed_) {
+    if (needed_ != 0 && done_ >= needed_) {
         ldebug("Reactor::process(): signalling done to control thread after %ld frames\n", done_);
         signal_finished();
     }

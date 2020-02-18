@@ -51,10 +51,11 @@ class Reactor {
 public:
     explicit Reactor(
         JackClient& client,
-        const vector<string>& input_ports, 
+        const vector<string>& input_ports,
         const vector<string>& output_ports,
         Reader* reader = nullptr,
-        Writer* writer = nullptr
+        Writer* writer = nullptr,
+        bool duration_infinite = false
     );
 
     ~Reactor();

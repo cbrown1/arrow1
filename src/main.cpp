@@ -10,20 +10,27 @@
 #include <memory>
 #include <exception>
 #include <iostream>
+#include <iomanip>
 
 namespace olo {
 using std::unique_ptr;
 
+namespace {
 void fixup_default_ports(Args& args, const JackClient& client) {
-    const size_t PORTS_DEFAULT_COUNT = 2;
     if(args.input_ports == Args::PORTS_DEFAULT) {
         args.input_ports = client.capture_ports();
-        args.input_ports.resize(std::min(args.input_ports.size(), PORTS_DEFAULT_COUNT));
+        if (args.input_channel_count) {
+            args.input_ports.resize(std::min(*args.input_channel_count, args.input_ports.size()));
+        }
     }
     if(args.output_ports == Args::PORTS_DEFAULT) {
         args.output_ports = client.playback_ports();
-        args.output_ports.resize(std::min(args.output_ports.size(), PORTS_DEFAULT_COUNT));
+        if (!args.input_file.empty()) {
+            auto channels = query_audio_file_channels(args.input_file);
+            args.output_ports.resize(std::min(args.output_ports.size(), channels));
+        }
     }
+}
 }
 
 void main(int argc, char** argv) {
@@ -36,6 +43,7 @@ void main(int argc, char** argv) {
         client.dump_ports();
         return;
     }
+
     fixup_default_ports(args, client);
 
     unique_ptr<Reader> reader;
@@ -45,7 +53,7 @@ void main(int argc, char** argv) {
             client.sample_rate(),
             args.output_ports.size(),
             args.buffer_size,
-            args.duration_secs,
+            args.duration_secs.value_or(0),
             args.start_offset_secs
         });
     }
@@ -57,27 +65,30 @@ void main(int argc, char** argv) {
             client.sample_rate(),
             args.input_ports.size(),
             args.buffer_size,
-            args.duration_secs
+            args.duration_secs.value_or(0)
         });
     }
 
     Reactor reactor {
-        client, 
-        args.input_ports, 
+        client,
+        args.input_ports,
         args.output_ports,
         reader.get(),
         writer.get(),
+        args.duration_secs && 0 == *args.duration_secs
     };
 
     reactor.wait_finished();
 
     if (reader) {
         reader->stop();
-        std::cout << "frames read: " << reader->frames_done(); // << " (" << printf("%.2f", (float)reader->frames_done() / (float)reader->sample_rate()) << "s)\n";
+        std::cout << "frames read: " << reader->frames_done() << " ("
+            << std::fixed << std::setprecision(3) << reader->frames_done() / (double)reader->sample_rate() << "s)\n";
     }
     if (writer) {
         writer->stop();
-        std::cout << "frames written: " << writer->frames_done(); // << " (" << printf("%.2f", (float)writer->frames_done() / (float)writer->sample_rate()) << "s)\n";
+        std::cout << "frames written: " << writer->frames_done() << " ("
+            << std::fixed << std::setprecision(3) << writer->frames_done() / (double)writer->sample_rate() << "s)\n";
     }
 }
 }

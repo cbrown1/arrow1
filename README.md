@@ -29,11 +29,11 @@ cd arrow1
 make && sudo make install
 ```
 
-Or with CMake, which gives more control over the process:
+Or with [CMake](https://cmake.org/), which gives more control over the process:
 
 ```bash
 cd arrow1
-mkdir build && cd build && cmake ../src && make
+mkdir build && cd build && cmake .. && make
 ```
 
 ## Usage
@@ -59,8 +59,9 @@ $ arrow1 -c
 2 Input (record) channels:
    1: system:capture_1
    2: system:capture_2
-$ 
+$
 ```
+
 Play a two-channel soundfile and record for 5.2s from channel 2 and write to a soundfile:
 
 ```bash
@@ -69,13 +70,14 @@ frames read: 132300 (3.004s)
 frames written: 229320 (5.204s)
 $
 ```
+
 The same thing, using aliases created above:
 
 ```bash
 $ arrow1 -p test/2_channels.wav -o in1,in2 -r test.wav -i out2 -D 5.2
 frames read: 132300 (3.004s)
 frames written: 229320 (5.204s)
-$ 
+$
 ```
 
 Play channels 2 & 4 of a 6-channel file:
@@ -83,16 +85,17 @@ Play channels 2 & 4 of a 6-channel file:
 ```bash
 $ arrow1 -p test/6_channels.wav -o null,system:playback_1,null,system:playback_2,null,null
 frames read: 132300 (3.004s)
-double free or corruption (out)
-Aborted
 ```
 
+Record from all available Jack inputs until explicitly stopped with ^C:
+
+```bash
+$ arrow1 --duration=0 -r foo.wav
+^CReactor::signal_handler_(): stopping on signal 2
+frames written: 368896 (7.690s)
+```
 
 ## TODO
-
-- Default playback channel map; soundfile_ch1 -> jack_output_ch1, etc.
-
-- Indefinite record; user specifies --duration 0, which means hit a key to stop
 
 - Proper Python wrapper (no temp files, etc)
 

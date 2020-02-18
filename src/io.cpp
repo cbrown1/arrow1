@@ -12,6 +12,19 @@ namespace olo {
 using std::runtime_error;
 using boost::format;
 
+namespace {
+auto open_sndfile(const string& path, int mode, SF_INFO& si) {
+    std::unique_ptr<SNDFILE, typeof(&sf_close)> sf {
+        sf_open(path.c_str(), mode, &si),
+        sf_close
+    };
+    if (!sf) {
+        throw runtime_error{str(format("can't open file %1%") % path)};
+    }
+    return sf;
+}
+}
+
 IoWorker::IoWorker(size_t sample_rate, size_t channel_count, size_t buffer_size):
     sample_rate_{sample_rate},
     channel_count_{channel_count},
@@ -94,10 +107,7 @@ Reader::Reader(
     IoWorker{sample_rate, channel_count, buffer_size}
 {
     SF_INFO si = {0};
-    sf_.reset(sf_open(path.c_str(), SFM_READ, &si));
-    if (!sf_) {
-        throw runtime_error{str(format("reader can't open file %1%") % path)};
-    }
+    sf_ = open_sndfile(path, SFM_READ, si);
     if (si.samplerate != sample_rate_) {
         throw runtime_error{str(format("input file sample rate: %1%; engine sample rate: %2%")
             % si.samplerate % sample_rate_)};
@@ -169,10 +179,7 @@ Writer::Writer(
     si.channels = channel_count_;
     si.samplerate = sample_rate_;
     si.format = SF_FORMAT_WAV | SF_FORMAT_PCM_32;
-    sf_.reset(sf_open(path.c_str(), SFM_WRITE, &si));
-    if (!sf_) {
-        throw runtime_error{str(format("writer can't open file %1%") % path)};
-    }
+    sf_ = open_sndfile(path, SFM_WRITE, si);
     ldebug("Writer: writing to %s with %ld sample rate and %ld channels\n",
         path.c_str(), sample_rate_, channel_count_);
     needed_ = duration_secs * sample_rate_ + .5;
@@ -201,6 +208,12 @@ void Writer::work_cycle() {
         ldebug("Writer::drain(): requesting worker stop, we're done after %ld frames\n", done_);
         break_ = true;
     }
+}
+
+size_t query_audio_file_channels(const string& path) {
+    SF_INFO si = {0};
+    auto sf = open_sndfile(path, SFM_READ, si);
+    return si.channels;
 }
 
 }

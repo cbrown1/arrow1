@@ -28,26 +28,30 @@ bool validate(const po::variables_map& vm, Args& args) {
         return true;
     }
     if (args.output_file.empty() && args.input_file.empty()) {
-        std::cerr << ABOUT +
+        std::cerr << ABOUT <<
         "\nNo playback or record file specified. Nothing to do!\n";
         return false;
     }
-    if (!args.output_file.empty() && args.input_file.empty() && args.duration_secs == 0) {
+    if (!args.output_file.empty() && args.input_file.empty() && !args.duration_secs) {
         std::cerr << "Recording requires a playback file name and/or a duration to be specified\n";
         return false;
     }
-    if (vm.count("duration") && args.duration_secs == 0) {
-        std::cerr << "Record duration can't be 0\n";
+    if (args.input_channel_count && vm.count("in") != 0) {
+        std::cerr << "Options --input-channel-count and --in cannot be set at the same time\n";
+        return false;
+    }
+    if (args.duration_secs && *args.duration_secs < 0) {
+        std::cerr << "Duration must not be negative\n";
+        return false;
+    }
+    if (args.start_offset_secs < 0) {
+        std::cerr << "Start offset must not be negative\n";
         return false;
     }
     // For compatibility with comma-separated input
     args.input_ports = split_ports(args.input_ports);
     args.output_ports = split_ports(args.output_ports);
     return true;
-}
-
-string dump_version() {
-    return ABOUT;
 }
 }
 
@@ -67,17 +71,19 @@ Args handle_cli(int argc, char** argv) {
             "Jack buffer size in samples")
         ("in,i", po::value(&args.input_ports),
             "Jack input (record) channels, specified using a comma-separated list; first item specifies soundfile ch 1, etc")
+        ("input-channel-count,I", po::value(&args.input_channel_count),
+            "Number of input (record) channels to use (use alternatively with --in)")
         ("out,o", po::value(&args.output_ports),
             "Jack output (playback) channels, specified using a comma-separated list; first item specifies soundfile ch 1, etc")
         ("duration,D", po::value(&args.duration_secs),
-            "Duration of playback and recording in s; if not set, will be equal to the length of playback file")
+            "Duration of playback and recording in s; if not set, will be equal to the length of playback file; if 0 - record until terminated with ^C")
         ("start,s", po::value(&args.start_offset_secs),
             "Offset to start at when reading audio file, in s")
         ("play-file,p", po::value(&args.input_file), "File path to read playback audio from, in any format supported by libsndfile")
         ("record-file,r", po::value(&args.output_file), "File path to write recorded audio to, in wav format")
     ;
     po::positional_options_description pos;
-    pos.add("record-file", 1).add("play-file", 1);
+    pos.add("play-file", 1).add("record-file", 1);
 
     po::variables_map vm;
     try {
@@ -94,11 +100,11 @@ Args handle_cli(int argc, char** argv) {
     }
 
     if (vm.count("help")) {
-        std::cout << dump_version() << "\n" << opts << "\n";
+        std::cout << ABOUT << "\n" << opts << "\n";
         std::exit(EXIT_SUCCESS);
     }
     if (args.show_version) {
-        std::cout << dump_version();
+        std::cout << ABOUT;
         std::exit(EXIT_SUCCESS);
     }
     if (!validate(vm, args)) {
