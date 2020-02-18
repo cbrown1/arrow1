@@ -14,7 +14,8 @@ install:
 
 script:
   # Use CMake rather than plain makefile as it will allow to build .deb with CPack
-  - mkdir build && cd build && cmake .. && make
+  # TODO upload built .deb package somewhere like S3
+  - mkdir build && cd build && cmake .. && make && make package
 
 notifications:
   email: false

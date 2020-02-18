@@ -45,3 +45,7 @@ target_link_libraries(arrow1
     )
 
 install(TARGETS arrow1 DESTINATION bin)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Christopher Brown")
+include(CPack)
