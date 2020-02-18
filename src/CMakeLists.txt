@@ -46,6 +46,11 @@ target_link_libraries(arrow1
 
 install(TARGETS arrow1 DESTINATION bin)
 
-set(CPACK_GENERATOR "DEB")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Christopher Brown")
+if(CMAKE_SYSTEM_NAME MATCHES Linux)
+    set(CPACK_GENERATOR "DEB")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Christopher Brown")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS libjack libsndfile1)
+elseif(WIN32)
+    # TODO configure CPack for Windows
+endif()
 include(CPack)

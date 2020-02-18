@@ -1,21 +1,33 @@
 language: c++
-dist: bionic
-
-sudo: false
-
-before_install:
-  - uname -a
-  - free -m
-  - df -h
-  - ulimit -a
-
-install:
-  - sudo apt-get install libjack-dev libsndfile1-dev libboost-program-options-dev
-
+git:
+  depth: 3
 script:
   # Use CMake rather than plain makefile as it will allow to build .deb with CPack
   # TODO upload built .deb package somewhere like S3
   - mkdir build && cd build && cmake .. && make && make package
-
 notifications:
   email: false
+
+cache:
+  directories:
+    - $HOME/AppData/Local/Temp/chocolatey
+
+matrix:
+  include:
+    - name: Ubuntu
+      os: linux
+      dist: bionic
+      sudo: false
+      before_install:
+        - uname -a
+        - free -m
+        - df -h
+        - ulimit -a
+      install:
+        - sudo apt-get install libjack-dev libsndfile1-dev libboost-program-options-dev
+    - name: Windows
+      os: windows
+      language: cpp
+      install:
+        # TODO install libsndfile and Jack
+        - choco install boost-msvc-14.1
