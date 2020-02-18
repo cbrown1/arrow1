@@ -83,12 +83,12 @@ void main(int argc, char** argv) {
     if (reader) {
         reader->stop();
         std::cout << "frames read: " << reader->frames_done() << " ("
-            << std::fixed << std::setprecision(2) << reader->frames_done() / (double)reader->sample_rate() << "s)\n";
+            << std::fixed << std::setprecision(3) << reader->frames_done() / (double)reader->sample_rate() << "s)\n";
     }
     if (writer) {
         writer->stop();
         std::cout << "frames written: " << writer->frames_done() << " ("
-            << std::fixed << std::setprecision(2) << writer->frames_done() / (double)writer->sample_rate() << "s)\n";
+            << std::fixed << std::setprecision(3) << writer->frames_done() / (double)writer->sample_rate() << "s)\n";
     }
 }
 }
