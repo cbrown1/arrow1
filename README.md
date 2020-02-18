@@ -4,8 +4,6 @@
 
 Play and record multi-channel audio using jack.
 
-This is the same code as [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md) with a few minor bugfixes, and improved logging and option handling. But the essential code is identical.
-
 ## Prerequisites
 
 - [jack](http://jackaudio.org/)
@@ -94,6 +92,16 @@ $ arrow1 --duration=0 -r foo.wav
 ^CReactor::signal_handler_(): stopping on signal 2
 frames written: 368896 (7.690s)
 ```
+
+
+## Notes
+
+- This project was developed for recording room and head-related impulse responses (RIRs and HRIRs)
+
+- It was originally a fork of [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md), but has since been completely re-written
+
+- The name is an old Twilight Zone reference
+
 
 ## TODO
 
