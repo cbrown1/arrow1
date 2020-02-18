@@ -1,4 +1,5 @@
 language: c++
+dist: bionic
 
 sudo: false
 
@@ -12,7 +13,8 @@ install:
   - sudo apt-get install libjack-dev libsndfile1-dev libboost-program-options-dev
 
 script:
-  - make
+  # Use CMake rather than plain makefile as it will allow to build .deb with CPack
+  - mkdir build && cd build && cmake .. && make
 
 notifications:
   email: false
