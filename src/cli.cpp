@@ -28,7 +28,7 @@ bool validate(const po::variables_map& vm, Args& args) {
         return true;
     }
     if (args.output_file.empty() && args.input_file.empty()) {
-        std::cerr << ABOUT +
+        std::cerr << ABOUT <<
         "\nNo playback or record file specified. Nothing to do!\n";
         return false;
     }
@@ -40,14 +40,14 @@ bool validate(const po::variables_map& vm, Args& args) {
         std::cerr << "Record duration can't be 0\n";
         return false;
     }
+    if (args.input_channel_count && vm.count("in") != 0) {
+        std::cerr << "Options --input-channel-count and --in cannot be set at the same time\n";
+        return false;
+    }
     // For compatibility with comma-separated input
     args.input_ports = split_ports(args.input_ports);
     args.output_ports = split_ports(args.output_ports);
     return true;
-}
-
-string dump_version() {
-    return ABOUT;
 }
 }
 
@@ -67,6 +67,8 @@ Args handle_cli(int argc, char** argv) {
             "Jack buffer size in samples")
         ("in,i", po::value(&args.input_ports),
             "Jack input (record) channels, specified using a comma-separated list; first item specifies soundfile ch 1, etc")
+        ("input-channel-count,I", po::value(&args.input_channel_count),
+            "Number of input (record) channels to use (use alternatively with --in)")
         ("out,o", po::value(&args.output_ports),
             "Jack output (playback) channels, specified using a comma-separated list; first item specifies soundfile ch 1, etc")
         ("duration,D", po::value(&args.duration_secs),
@@ -94,11 +96,11 @@ Args handle_cli(int argc, char** argv) {
     }
 
     if (vm.count("help")) {
-        std::cout << dump_version() << "\n" << opts << "\n";
+        std::cout << ABOUT << "\n" << opts << "\n";
         std::exit(EXIT_SUCCESS);
     }
     if (args.show_version) {
-        std::cout << dump_version();
+        std::cout << ABOUT;
         std::exit(EXIT_SUCCESS);
     }
     if (!validate(vm, args)) {
