@@ -16,7 +16,7 @@ endif()
 
 find_package(Threads REQUIRED)
 
-# set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS program_options REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -45,3 +45,12 @@ target_link_libraries(arrow1
     )
 
 install(TARGETS arrow1 DESTINATION bin)
+
+if(CMAKE_SYSTEM_NAME MATCHES Linux)
+    set(CPACK_GENERATOR "DEB")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Christopher Brown")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS libjack libsndfile1)
+elseif(WIN32)
+    # TODO configure CPack for Windows
+endif()
+include(CPack)
