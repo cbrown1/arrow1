@@ -2,32 +2,45 @@ language: c++
 git:
   depth: 3
 script:
-  # Use CMake rather than plain makefile as it will allow to build .deb with CPack
-  # TODO upload built .deb package somewhere like S3
-  - mkdir build && cd build && cmake .. && make && make package
+- mkdir build && cd build
+- cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ${CMAKE_PLATFORM_ARGS} ..
+- cmake --build . --config RelWithDebInfo
+- cmake --build . --config RelWithDebInfo --target package
 notifications:
   email: false
-
-cache:
-  directories:
-    - $HOME/AppData/Local/Temp/chocolatey
-
 matrix:
   include:
-    - name: Ubuntu
-      os: linux
-      dist: bionic
-      sudo: false
-      before_install:
-        - uname -a
-        - free -m
-        - df -h
-        - ulimit -a
-      install:
-        - sudo apt-get install libjack-dev libsndfile1-dev libboost-program-options-dev
-    - name: Windows
-      os: windows
-      language: cpp
-      install:
-        # TODO install libsndfile and Jack
-        - choco install boost-msvc-14.1
+  - name: Ubuntu
+    os: linux
+    dist: bionic
+    sudo: false
+    before_install:
+    - uname -a
+    - free -m
+    - df -h
+    - ulimit -a
+    install:
+    - sudo apt-get install libjack-dev libsndfile1-dev libboost-program-options-dev
+    - export CMAKE_PLATFORM_ARGS=
+  - name: Windows
+    os: windows
+    install:
+    - tar xf deps/libjack-win64.tar.bz2 -C deps
+    - tar xf deps/libsndfile-win64.tar.bz2 -C deps
+    - choco install nsis
+    - choco install boost-msvc-14.1 --version 1.67.0
+    - export BOOST_INCLUDEDIR=c:/local/boost_1_67_0
+    - export BOOST_LIBRARYDIR=c:/local/boost_1_67_0/lib64-msvc-14.1
+    - export "CMAKE_PLATFORM_ARGS=-A x64"
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key: ${GITHUB_OAUTH_TOKEN}
+  file_glob: true
+  file:
+  - arrow1-*-Linux.deb
+  - arrow1-*-win64.zip
+  on:
+    branch: master
+    repo: cbrown1/arrow1
+    tags: true

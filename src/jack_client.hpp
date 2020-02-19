@@ -8,7 +8,7 @@
 namespace olo {
 
 class JackClient {
-    std::unique_ptr<jack_client_t, typeof(&jack_client_close)> client_;
+    std::unique_ptr<jack_client_t, decltype(&jack_client_close)> client_;
     const char* name_;
     size_t sample_rate_;
 

@@ -5,4 +5,5 @@ project(arrow1
     HOMEPAGE_URL "https://github.com/cbrown1/arrow1"
     LANGUAGES CXX
 )
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 add_subdirectory(src)

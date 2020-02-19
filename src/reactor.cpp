@@ -39,7 +39,16 @@ auto create_port(JackClient& client, const string& name, int flags) {
 }
 
 Reactor* instance = nullptr;
-const int SIGNALS_INTERCEPT[] = {SIGQUIT, SIGTERM, SIGHUP, SIGINT};
+const int SIGNALS_INTERCEPT[] = {
+    SIGINT,
+    SIGTERM,
+#ifdef SIGQUIT
+    SIGQUIT,
+#endif
+#ifdef SIGHUP
+    SIGHUP,
+#endif
+};
 }
 
 void Reactor::register_ports(const vector<string>& input_ports, const vector<string>& output_ports) {
@@ -136,7 +145,7 @@ Reactor::Reactor(
     }
 {
     if (needed_ != 0) {
-        ldebug("Reactor::Reactor(): processing at most %ld frames\n", needed_);
+        ldebug("Reactor::Reactor(): processing at most %zd frames\n", needed_);
     } else {
         ldebug("Reactor::Reactor(): processing until explicitly terminated\n");
     }
@@ -196,7 +205,7 @@ void Reactor::signal_finished() {
 void Reactor::wait_finished() {
     finished_.get_future().wait();
     deactivate();
-    ldebug("Reactor::wait_finished(): done processing %ld frames\n    overruns: %ld\n    underruns: %ld\n", done_, overruns_, underruns_);
+    ldebug("Reactor::wait_finished(): done processing %zd frames\n    overruns: %zd\n    underruns: %zd\n", done_, overruns_, underruns_);
 }
 
 void Reactor::playback(size_t frame_count) {
@@ -308,7 +317,7 @@ void Reactor::process(size_t frame_count) {
 
     done_ += frame_count;
     if (needed_ != 0 && done_ >= needed_) {
-        ldebug("Reactor::process(): signalling done to control thread after %ld frames\n", done_);
+        ldebug("Reactor::process(): signalling done to control thread after %zd frames\n", done_);
         signal_finished();
     }
 }
