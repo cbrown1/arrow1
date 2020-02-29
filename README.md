@@ -103,6 +103,11 @@ frames written: 368896 (7.690s)
 - The name is an old Twilight Zone reference
 
 
+## Related Projects
+
+- [ecasound](http://www.eca.cx/ecasound/): multitrack audio processing software package
+
+
 ## TODO
 
 - Proper Python wrapper (no temp files, etc)
