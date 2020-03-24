@@ -19,7 +19,12 @@ auto open_sndfile(const string& path, int mode, SF_INFO& si) {
         sf_close
     };
     if (!sf) {
-        throw runtime_error{str(format("can't open file %1%") % path)};
+        if (mode == SFM_READ) {
+            throw runtime_error{str(format("can't open playback file: %1%") % path)};
+        }
+        if (mode == SFM_WRITE) {
+            throw runtime_error{str(format("can't open recording file: %1%") % path)};
+        }
     }
     return sf;
 }
@@ -109,11 +114,11 @@ Reader::Reader(
     SF_INFO si = {0};
     sf_ = open_sndfile(path, SFM_READ, si);
     if (si.samplerate != sample_rate_) {
-        throw runtime_error{str(format("input file sample rate: %1%; engine sample rate: %2%")
+        throw runtime_error{str(format("playback file sample rate: %1%; engine sample rate: %2%")
             % si.samplerate % sample_rate_)};
     }
     if (si.channels != channel_count_) {
-        throw runtime_error{str(format("input file channels: %1%; engine channels: %2%")
+        throw runtime_error{str(format("playback file channels: %1%; engine channels: %2%")
             % si.channels % channel_count_)};
     }
     ldebug("Reader: reading from %s with %zd sample rate and %zd channels\n",

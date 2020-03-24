@@ -26,10 +26,14 @@ using boost::optional;
 const size_t BUFFER_SIZE_DEFAULT = 65536 / 8;
 const string JACK_CLIENT_NAME = "arrow1";
 const string VERSION = "2.0";
-const string NULL_OUTPUT = "null";
-const string ABOUT = JACK_CLIENT_NAME + " v" + VERSION + ": Play and record multi-channel audio using jack\n"
+const string NAME_DISPLAY = "   _                      _\n"
+                            "  /_\\  _ _ _ _ _____ __ _/ |\n"
+                            " / _ \\| '_| '_/ _ \\ V  V / |\n"
+                            "/_/ \\_\\_| |_| \\___/\\_/\\_/|_|";
+const string ABOUT = NAME_DISPLAY + " v" + VERSION + "\nPlay and record multi-channel audio using Jack\n"
         "Copyright (C) 2020  Christopher Brown <cbrown1@pitt.edu>\n"
 		"Distributed under the terms of the GNU GPL, v3 or later\n";
+const string NULL_OUTPUT = "null";
 
 class Reader;
 class Writer;

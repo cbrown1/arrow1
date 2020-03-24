@@ -2,7 +2,7 @@
 
 # arrow1
 
-Play and record multi-channel audio using jack.
+Play and record multi-channel audio using Jack.
 
 ## Prerequisites
 
@@ -78,10 +78,10 @@ frames written: 229320 (5.204s)
 $
 ```
 
-Play channels 2 & 4 of a 6-channel file:
+Play channels 2 and 6 of a 6-channel file:
 
 ```bash
-$ arrow1 -p test/6_channels.wav -o null,system:playback_1,null,system:playback_2,null,null
+$ arrow1 -p test/6_channels.wav -o null,system:playback_1,null,null,null,system:playback_2
 frames read: 132300 (3.004s)
 ```
 
@@ -97,6 +97,8 @@ frames written: 368896 (7.690s)
 ## Notes
 
 - This project was developed for recording room and head-related impulse responses (RIRs and HRIRs)
+
+- To be clear, this program is meant for play-and-record, not record-and-play
 
 - It was originally a fork of [recapture](https://gist.github.com/jedahu/5028736#file-multichannel-play-record-jack-md), but has since been completely re-written
 
