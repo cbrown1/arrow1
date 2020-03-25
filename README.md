@@ -63,7 +63,7 @@ $
 Play a two-channel soundfile and record for 5.2s from channel 2 and write to a soundfile:
 
 ```bash
-$ arrow1 -p test/2_channels.wav -o system:playback_1,system:playback_2 -r test.wav -i system:capture_2 -D 5.2
+$ arrow1 -r test/2_channels.wav -o system:playback_1,system:playback_2 -w test.wav -i system:capture_2 -D 5.2
 frames read: 132300 (3.004s)
 frames written: 229320 (5.204s)
 $
@@ -72,7 +72,7 @@ $
 The same thing, using aliases created above:
 
 ```bash
-$ arrow1 -p test/2_channels.wav -o in1,in2 -r test.wav -i out2 -D 5.2
+$ arrow1 -r test/2_channels.wav -o in1,in2 -w test.wav -i out2 -D 5.2
 frames read: 132300 (3.004s)
 frames written: 229320 (5.204s)
 $
@@ -81,14 +81,14 @@ $
 Play channels 2 and 6 of a 6-channel file:
 
 ```bash
-$ arrow1 -p test/6_channels.wav -o null,system:playback_1,null,null,null,system:playback_2
+$ arrow1 -r test/6_channels.wav -o null,system:playback_1,null,null,null,system:playback_2
 frames read: 132300 (3.004s)
 ```
 
 Record from all available Jack inputs until explicitly stopped with ^C:
 
 ```bash
-$ arrow1 --duration=0 -r foo.wav
+$ arrow1 --duration=0 -w foo.wav
 ^CReactor::signal_handler_(): stopping on signal 2
 frames written: 368896 (7.690s)
 ```

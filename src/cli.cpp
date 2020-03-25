@@ -79,8 +79,8 @@ Args handle_cli(int argc, char** argv) {
             "Duration of playback and recording in s ; if not set, the duration of playback file will be used ; required for recording without playback ; use 0 to record until terminated with ^C")
         ("start,s", po::value(&args.start_offset_secs),
             "Offset to start at when reading playback file, in s")
-        ("play-file,p", po::value(&args.input_file), "File path to read playback audio data from, in any format supported by libsndfile")
-        ("record-file,r", po::value(&args.output_file), "File path to write recorded audio data to, in wav format")
+        ("read-file,r", po::value(&args.input_file), "File path to read playback audio data from, in any format supported by libsndfile")
+        ("write-file,w", po::value(&args.output_file), "File path to write recorded audio data to, in wav format ; warning, existing files will be overwritten")
     ;
     po::positional_options_description pos;
     pos.add("play-file", 1).add("record-file", 1);
