@@ -64,9 +64,7 @@ def play_rec(play=None, rec=None, input_ports=None, output_ports=None, duration_
     play_cleanup = False
     if isinstance(play, _np.ndarray):
         f = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-        #wf.saveWave(f, samplerate, play)
-        pysndfile.sndio.write(f, play, fs, format='wav')
-        #_wf.write(f, fs, play)
+        pysndfile.sndio.write(f.name, play, fs, format='wav')
         play = f.name
         play_cleanup = True
 
@@ -81,9 +79,9 @@ def play_rec(play=None, rec=None, input_ports=None, output_ports=None, duration_
     if output_ports:
         args.append(f"--out={','.join(output_ports)}")
     if play:
-        args.append(f"--play-file={play}")
+        args.append(f"--read-file={play}")
     if rec:
-        args.append(f"--record-file={rec}")
+        args.append(f"--write-file={rec}")
     if duration_secs is not None:
         args.append(f"--duration={duration_secs}")
     if start_offset_secs is not None:
@@ -97,9 +95,7 @@ def play_rec(play=None, rec=None, input_ports=None, output_ports=None, duration_
         os.remove(play)
 
     if rec_cleanup:
-        #fs, arr = _wf.read(rec)
-        #fs, arr = wf.read(rec)
-        arr, fs, enc_ = pysndfile.sndio.read(rec)
+        arr, fs, enc_ = pysndfile.sndio.read(rec.name)
         os.remove(rec)
         return arr, fs
 
