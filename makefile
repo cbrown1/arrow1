@@ -3,7 +3,7 @@ arrow1: src/cli.cpp src/io.cpp src/jack_client.cpp src/log.cpp src/main.cpp src/
 
 install:
 	install out/arrow1 /usr/local/bin
-	python -m pip install --user python-wrapper
+	python -m pip install --user ./python-wrapper
 
 uninstall:
 	-rm /usr/local/bin/arrow1
